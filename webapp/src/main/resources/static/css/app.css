@@ -472,23 +472,23 @@ a:hover { color: var(--gold-dark); }
     white-space: nowrap;
 }
 .toolbar input, .toolbar select {
-    width: auto;
-    height: 22px;
-    padding: 0 6px;
+    width: 160px;
+    height: 38px;
+    padding: 0 8px;
     border: 1px solid var(--border-2);
     border-radius: 3px;
     font-family: inherit;
-    font-size: 12px;
+    font-size: 13px;
     background: var(--card);
     color: var(--text);
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
     outline: none;
     box-sizing: border-box;
 }
-.toolbar input[type="number"] { width: 70px; }
-.toolbar input[type="date"] { width: 130px; }
-.toolbar input[type="text"] { width: 140px; min-width: 100px; }
-.toolbar select { min-width: 100px; }
+.toolbar input[type="number"] { width: 80px; }
+.toolbar input[type="date"] { width: 160px; }
+.toolbar input[type="text"] { width: 160px; }
+.toolbar select { min-width: 120px; }
 .toolbar input:focus, .toolbar select:focus {
     border-color: var(--gold);
     box-shadow: 0 0 0 2px rgba(184, 148, 95, 0.10);
@@ -608,15 +608,14 @@ table.data-table {
     font-weight: 500;
 }
 .form-group input,
-.form-group select,
-.form-group textarea {
-    width: 100%;
-    height: 22px;
-    padding: 0 6px;
+.form-group select {
+    width: 160px;
+    height: 38px;
+    padding: 0 8px;
     border: 1px solid var(--border-2);
     border-radius: 3px;
     font-family: inherit;
-    font-size: 12px;
+    font-size: 13px;
     background: var(--card);
     color: var(--text);
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -624,9 +623,19 @@ table.data-table {
     box-sizing: border-box;
 }
 .form-group textarea {
+    width: 100%;
     height: auto;
     min-height: 40px;
-    padding: 5px 6px;
+    padding: 8px;
+    border: 1px solid var(--border-2);
+    border-radius: 3px;
+    font-family: inherit;
+    font-size: 13px;
+    background: var(--card);
+    color: var(--text);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    outline: none;
+    box-sizing: border-box;
     line-height: 1.5;
     resize: vertical;
 }
@@ -708,11 +717,12 @@ table.data-table {
 }
 .modal-body .form-group input,
 .modal-body .form-group select {
-    height: 26px;
+    width: 160px;
+    height: 38px;
     padding: 0 8px;
     border: 1px solid var(--border-2);
     border-radius: 3px;
-    font-size: 12px;
+    font-size: 13px;
     background: var(--card);
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
     outline: none;

@@ -22,7 +22,8 @@ var TabManager = {
         var content = document.getElementById('contentArea');
         if (!content) return;
         var origHtml = content.innerHTML;
-        // 改为纵向 flex: 标签栏 + iframe 区域
+        // 清空原始内容, 改为纵向 flex
+        content.innerHTML = '';
         content.style.cssText = 'display:flex;flex-direction:column;padding:0;overflow:hidden;';
         // 标签栏
         var bar = document.createElement('div');
@@ -39,9 +40,14 @@ var TabManager = {
 
     open: function(id, title, url) {
         this._init();
-        // 已存在则切换
+        // 已存在则切换 (并刷新 iframe 以获取最新数据)
         for (var i = 0; i < this.tabs.length; i++) {
-            if (this.tabs[i].id === id) { this.switchTo(id); return; }
+            if (this.tabs[i].id === id) {
+                var frame = document.querySelector('#tabFrameWrap iframe[data-tab="' + id + '"]');
+                if (frame) frame.src = frame.src;
+                this.switchTo(id);
+                return;
+            }
         }
         var wrap = document.getElementById('tabFrameWrap');
         // 首次: 将当前页面作为首页标签 (用 iframe 重新加载)
