@@ -382,6 +382,21 @@ public class LeaveService {
         appRepo.delete(appId);
     }
 
+    /**
+     * 插入历史请假记录 (导入用, 不扣减年假额度)
+     */
+    @Transactional
+    public Long insertHistoricalApplication(LeaveApplication a, LocalDate approveDate) {
+        Long id = appRepo.insert(a);
+        if ("已审批".equals(a.getStatus()) || "已销假".equals(a.getStatus())) {
+            appRepo.updateStatus(id, a.getStatus(), "导入");
+            if (approveDate != null) {
+                appRepo.updateApproveDate(id, approveDate);
+            }
+        }
+        return id;
+    }
+
     // ==================== 销假管理 ====================
 
     public List<LeaveApplication> listPendingCancellations() {

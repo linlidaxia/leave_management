@@ -2,6 +2,7 @@ package com.leavemgmt.service;
 
 import com.leavemgmt.model.Department;
 import com.leavemgmt.model.Employee;
+import com.leavemgmt.model.LeaveApplication;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -240,6 +241,141 @@ public class DataImportService {
             r.ok("已添加人员「" + name + "」 ID=" + id);
         } catch (Exception ex) {
             r.fail("保存失败: " + ex.getMessage());
+        }
+        return r;
+    }
+
+    // ==================== 历史请假记录模板 ====================
+
+    public byte[] downloadLeaveImportTemplate() throws IOException {
+        try (Workbook wb = new XSSFWorkbook();
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet ws = wb.createSheet("请假记录导入模板");
+
+            ws.addMergedRegion(new CellRangeAddress(0, 0, 0, 9));
+            Cell title = ws.createRow(0).createCell(0);
+            title.setCellValue("历史请假记录批量导入模板");
+            title.setCellStyle(titleStyle(wb));
+
+            String[] headers = {"员工姓名*", "假别名称*", "开始日期*", "开始时段*", "结束日期*", "结束时段*", "事由", "状态", "登记日期", "审批日期"};
+            Row hr = ws.createRow(1);
+            for (int i = 0; i < headers.length; i++) {
+                Cell c = hr.createCell(i);
+                c.setCellValue(headers[i]);
+                c.setCellStyle(headStyle(wb));
+            }
+
+            String[][] samples = {
+                {"张三", "病假", "2026-01-05", "上午", "2026-01-07", "下午", "感冒发烧", "已审批", "2026-01-05", "2026-01-05"},
+                {"李四", "事假", "2026-03-10", "全天", "2026-03-10", "全天", "家中有事", "已销假", "2026-03-09", "2026-03-09"}
+            };
+            for (int i = 0; i < samples.length; i++) {
+                Row r = ws.createRow(2 + i);
+                for (int j = 0; j < samples[i].length; j++) {
+                    Cell c = r.createCell(j);
+                    c.setCellValue(samples[i][j]);
+                    c.setCellStyle(cellStyle(wb));
+                }
+            }
+
+            Row noteRow = ws.createRow(5);
+            Cell note = noteRow.createCell(0);
+            note.setCellValue("说明: 1)带*列为必填 2)员工姓名和假别名称需与系统中已有数据一致 3)日期格式:YYYY-MM-DD 4)时段:上午/下午/全天 5)状态:已审批/已销假(默认已审批) 6)导入的历史记录不扣减年假额度");
+            note.setCellStyle(noteStyle(wb));
+
+            int[] widths = {14, 12, 14, 10, 14, 10, 24, 10, 14, 14};
+            for (int i = 0; i < widths.length; i++) ws.setColumnWidth(i, widths[i] * 512);
+            wb.write(out);
+            return out.toByteArray();
+        }
+    }
+
+    /**
+     * 导入历史请假记录
+     * 不扣减年假额度 (历史数据), 直接插入记录
+     */
+    public Map<String, Object> importLeaveApplications(InputStream in) throws IOException {
+        Map<String, Object> ctx = new HashMap<>();
+        Map<String, Long> empName2Id = new HashMap<>();
+        for (Employee e : leaveService.listEmployees(null, null)) {
+            empName2Id.put(e.getName(), e.getId());
+        }
+        Map<String, Long> ltName2Id = new HashMap<>();
+        for (com.leavemgmt.model.LeaveType lt : leaveService.listLeaveTypes()) {
+            ltName2Id.put(lt.getName(), lt.getId());
+        }
+        ctx.put("empName2Id", empName2Id);
+        ctx.put("ltName2Id", ltName2Id);
+
+        return importExcel(in, "请假记录", (row, rowNum, context) -> parseAndSaveLeaveApplication(row, rowNum, context), ctx);
+    }
+
+    @SuppressWarnings("unchecked")
+    private ParseResult parseAndSaveLeaveApplication(Row row, int rowNum, Map<String, Object> ctx) {
+        ParseResult r = new ParseResult();
+        String empName = getCellString(row, 0).trim();
+        if (empName.isEmpty()) { r.fail("员工姓名不能为空"); return r; }
+        String ltName = getCellString(row, 1).trim();
+        if (ltName.isEmpty()) { r.fail("假别名称不能为空"); return r; }
+        String startDateStr = getCellString(row, 2).trim();
+        if (startDateStr.isEmpty()) { r.fail("开始日期不能为空"); return r; }
+        String startPeriod = getCellString(row, 3).trim();
+        if (startPeriod.isEmpty()) startPeriod = "全天";
+        String endDateStr = getCellString(row, 4).trim();
+        if (endDateStr.isEmpty()) { r.fail("结束日期不能为空"); return r; }
+        String endPeriod = getCellString(row, 5).trim();
+        if (endPeriod.isEmpty()) endPeriod = "全天";
+        String reason = getCellString(row, 6).trim();
+        String status = getCellString(row, 7).trim();
+        if (status.isEmpty()) status = "已审批";
+        String applyDateStr = getCellString(row, 8).trim();
+        String approveDateStr = getCellString(row, 9).trim();
+
+        Map<String, Long> empName2Id = (Map<String, Long>) ctx.get("empName2Id");
+        Map<String, Long> ltName2Id = (Map<String, Long>) ctx.get("ltName2Id");
+        Long empId = empName2Id.get(empName);
+        if (empId == null) { r.fail("员工「" + empName + "」不存在"); return r; }
+        Long ltId = ltName2Id.get(ltName);
+        if (ltId == null) { r.fail("假别「" + ltName + "」不存在"); return r; }
+
+        LocalDate startDate, endDate;
+        try { startDate = LocalDate.parse(startDateStr.length() >= 10 ? startDateStr.substring(0, 10) : startDateStr); }
+        catch (Exception e) { r.fail("开始日期格式错误: " + startDateStr); return r; }
+        try { endDate = LocalDate.parse(endDateStr.length() >= 10 ? endDateStr.substring(0, 10) : endDateStr); }
+        catch (Exception e) { r.fail("结束日期格式错误: " + endDateStr); return r; }
+
+        double days = com.leavemgmt.util.LeaveCalculator.calculateLeaveDays(startDate, startPeriod, endDate, endPeriod);
+        if (days <= 0) { r.fail("请假天数计算为0, 请检查日期和时段"); return r; }
+
+        LocalDate applyDate = LocalDate.now();
+        if (!applyDateStr.isEmpty()) {
+            try { applyDate = LocalDate.parse(applyDateStr.length() >= 10 ? applyDateStr.substring(0, 10) : applyDateStr); }
+            catch (Exception e) { /* ignore, use today */ }
+        }
+        LocalDate approveDate = applyDate;
+        if (!approveDateStr.isEmpty()) {
+            try { approveDate = LocalDate.parse(approveDateStr.length() >= 10 ? approveDateStr.substring(0, 10) : approveDateStr); }
+            catch (Exception e) { /* ignore, use applyDate */ }
+        }
+
+        LeaveApplication a = new LeaveApplication();
+        a.setEmployeeId(empId);
+        a.setLeaveTypeId(ltId);
+        a.setStartDate(startDate);
+        a.setStartPeriod(startPeriod);
+        a.setEndDate(endDate);
+        a.setEndPeriod(endPeriod);
+        a.setDays(days);
+        a.setReason(reason);
+        a.setStatus(status);
+        a.setApplyDate(applyDate);
+        a.setOffsetAnnual(0.0);
+
+        try {
+            Long id = leaveService.insertHistoricalApplication(a, approveDate);
+            r.ok("已导入「" + empName + "」" + ltName + " " + days + "天 ID=" + id);
+        } catch (Exception e) {
+            r.fail("保存失败: " + e.getMessage());
         }
         return r;
     }

@@ -121,6 +121,12 @@ public class LeaveApplicationRepository {
                 status, approver, SqliteDateUtil.toText(LocalDate.now()), id);
     }
 
+    public int updateApproveDate(Long id, LocalDate approveDate) {
+        return jdbc.update(
+                "UPDATE leave_applications SET approve_date=? WHERE id=?",
+                SqliteDateUtil.toText(approveDate), id);
+    }
+
     public int delete(Long id) {
         return jdbc.update("DELETE FROM leave_applications WHERE id=?", id);
     }

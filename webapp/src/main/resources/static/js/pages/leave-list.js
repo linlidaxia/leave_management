@@ -116,6 +116,9 @@
             html += '<button class="btn btn-secondary" onclick="leaveListReset()">重置</button>';
             html += '<div style="flex:1;"></div>';
             html += '<button class="btn btn-gold" onclick="leaveListExport()">导出 Excel</button>';
+            if (isAdmin) {
+                html += ' <button class="btn btn-secondary" onclick="leaveListImport()">导入历史记录</button>';
+            }
             html += '</div>';
             html += '</div>';
 
@@ -199,6 +202,62 @@
         if (ed) params.push('endDate=' + ed);
         var url = '/api/applications/excel' + (params.length ? '?' + params.join('&') : '');
         UI.downloadExcel(url);
+    };
+
+    window.leaveListImport = function() {
+        UI.modal('导入历史请假记录',
+            '<div class="alert alert-info" style="font-size:12px;">' +
+                '<b>导入说明:</b><br>' +
+                '1. 先下载模板, 按格式填写请假记录<br>' +
+                '2. 员工姓名和假别名称需与系统中已有数据一致<br>' +
+                '3. 导入的历史记录状态默认为「已审批」<br>' +
+                '4. 历史记录不会扣减年假额度' +
+            '</div>' +
+            '<div style="margin-bottom:10px;">' +
+                '<button class="btn btn-secondary" onclick="leaveListDownloadTemplate()">下载导入模板</button>' +
+            '</div>' +
+            '<div class="form-group"><label>选择 Excel 文件</label>' +
+            '<input type="file" id="ll_import_file" accept=".xlsx,.xls" style="font-size:12px;"></div>' +
+            '<div style="margin-top:10px;"><button class="btn btn-primary" onclick="leaveListDoImport()">开始导入</button></div>' +
+            '<div id="ll_import_result" style="margin-top:8px;"></div>',
+            function() { UI.closeModal(); },
+            '关闭'
+        );
+    };
+
+    window.leaveListDownloadTemplate = function() {
+        UI.downloadExcel('/api/import/applications/template');
+    };
+
+    window.leaveListDoImport = function() {
+        var fileInput = document.getElementById('ll_import_file');
+        if (!fileInput || !fileInput.files.length) {
+            UI.toast('请先选择 Excel 文件', 'error');
+            return;
+        }
+        var resultDiv = document.getElementById('ll_import_result');
+        resultDiv.innerHTML = '<p class="text-muted" style="font-size:12px;">正在导入...</p>';
+        var fd = new FormData();
+        fd.append('file', fileInput.files[0]);
+        Api.postForm('/api/import/applications', fd).then(function(r) {
+            if (r.success) {
+                var html = '<div class="alert alert-success" style="font-size:12px;">' +
+                    '导入完成: 总计 ' + r.total + ' 条, 成功 <b>' + r.success + '</b> 条';
+                if (r.failed > 0) html += ', 失败 <b style="color:var(--danger)">' + r.failed + '</b> 条';
+                html += '</div>';
+                if (r.errors && r.errors.length > 0) {
+                    html += '<div style="max-height:150px;overflow-y:auto;font-size:11px;color:var(--danger);">';
+                    for (var i = 0; i < r.errors.length; i++) html += r.errors[i] + '<br>';
+                    html += '</div>';
+                }
+                resultDiv.innerHTML = html;
+                if (r.failed === 0) load();
+            } else {
+                resultDiv.innerHTML = '<div class="alert alert-danger" style="font-size:12px;">' + (r.message || '导入失败') + '</div>';
+            }
+        }).catch(function(e) {
+            resultDiv.innerHTML = '<div class="alert alert-danger" style="font-size:12px;">导入异常: ' + e.message + '</div>';
+        });
     };
 
     function refreshAllAttachCounts() {

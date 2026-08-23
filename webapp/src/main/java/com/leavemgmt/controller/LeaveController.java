@@ -561,6 +561,40 @@ public class LeaveController {
         return service.getSummaryData(year, deptId);
     }
 
+    // ==================== 历史请假记录导入 ====================
+
+    @GetMapping("/import/applications/template")
+    public ResponseEntity<byte[]> downloadLeaveTemplate() throws IOException {
+        byte[] data = importService.downloadLeaveImportTemplate();
+        return fileResponse(data, "请假记录导入模板.xlsx");
+    }
+
+    @PostMapping(value = "/import/applications", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('ADMIN','USER')")
+    public ResponseEntity<Map<String, Object>> importLeaveApplications(@RequestParam("file") MultipartFile file) {
+        Map<String, Object> m = new HashMap<>();
+        if (file == null || file.isEmpty()) {
+            m.put("success", false);
+            m.put("message", "请选择要导入的文件");
+            return ResponseEntity.badRequest().body(m);
+        }
+        String name = file.getOriginalFilename();
+        if (name == null || !(name.toLowerCase().endsWith(".xlsx") || name.toLowerCase().endsWith(".xls"))) {
+            m.put("success", false);
+            m.put("message", "仅支持 .xlsx / .xls 格式");
+            return ResponseEntity.badRequest().body(m);
+        }
+        try (java.io.InputStream in = file.getInputStream()) {
+            Map<String, Object> result = importService.importLeaveApplications(in);
+            result.put("success", true);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            m.put("success", false);
+            m.put("message", "导入失败: " + e.getMessage());
+            return ResponseEntity.ok(m);
+        }
+    }
+
     // ==================== Excel 导出 ====================
 
     @GetMapping("/export/annual-balance")
