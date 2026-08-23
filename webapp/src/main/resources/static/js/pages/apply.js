@@ -171,6 +171,7 @@
         var ep = document.getElementById('a_ep').value;
         var reason = document.getElementById('a_reason').value;
         if (!empId || !ltId || !sd || !ed) { UI.toast('请选择人员/假别并填写日期', 'error'); return; }
+        if (ed < sd) { UI.toast('结束日期不能早于开始日期', 'error'); return; }
 
         var needAtt = currentLtNeedAttachment();
         var fileInput = document.getElementById('a_attach_file');

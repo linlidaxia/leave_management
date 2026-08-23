@@ -311,12 +311,15 @@
                 '<div class="form-group"><label>事由</label><input id="le_reason" value="' + (a.reason||'').replace(/"/g,'&quot;') + '"></div>' +
                 '<div class="alert alert-info" style="font-size:12px;">附件管理请关闭本对话框后，在列表中点击附件数量</div>',
                 function(form) {
+                    var sdVal = form.querySelector('#le_sd').value;
+                    var edVal = form.querySelector('#le_ed').value;
+                    if (edVal < sdVal) { UI.toast('结束日期不能早于开始日期', 'error'); return Promise.reject(new Error()); }
                     return Api.put('/api/applications/' + id, {
                         employeeId: parseInt(form.querySelector('#le_emp').value),
                         leaveTypeId: parseInt(form.querySelector('#le_lt').value),
-                        startDate: form.querySelector('#le_sd').value,
+                        startDate: sdVal,
                         startPeriod: form.querySelector('#le_sp').value,
-                        endDate: form.querySelector('#le_ed').value,
+                        endDate: edVal,
                         endPeriod: form.querySelector('#le_ep').value,
                         reason: form.querySelector('#le_reason').value
                     }).then(function(r) {

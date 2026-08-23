@@ -297,6 +297,11 @@ public class LeaveService {
                                   LocalDate start, String startPeriod,
                                   LocalDate end, String endPeriod,
                                   String reason) {
+        // 结束日期不能早于开始日期
+        if (end.isBefore(start)) {
+            throw new IllegalStateException("结束日期不能早于开始日期");
+        }
+
         // 时间重叠校验 (排除已销假)
         List<LeaveApplication> overlaps = appRepo.findOverlapping(empId,
                 SqliteDateUtil.toText(start), SqliteDateUtil.toText(end), null);
