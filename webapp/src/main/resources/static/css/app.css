@@ -609,7 +609,7 @@ table.data-table {
 }
 .form-group input,
 .form-group select {
-    width: 160px;
+    width: 100%;
     height: 30px;
     padding: 0 8px;
     border: 1px solid var(--border-2);
@@ -670,7 +670,7 @@ table.data-table {
     gap: 10px;
     flex-wrap: wrap;
 }
-.form-row .form-group { flex: 0 0 140px; min-width: 100px; }
+.form-row .form-group { flex: 0 0 180px; min-width: 120px; }
 .form-row .form-group.flex-grow { flex: 1 1 0; min-width: 120px; }
 
 /* ==================== 模态对话框 (Vue 风格) ==================== */
@@ -717,7 +717,7 @@ table.data-table {
 }
 .modal-body .form-group input,
 .modal-body .form-group select {
-    width: 160px;
+    width: 100%;
     height: 30px;
     padding: 0 8px;
     border: 1px solid var(--border-2);
