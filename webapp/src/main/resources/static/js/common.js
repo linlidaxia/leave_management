@@ -1,6 +1,181 @@
 // ==================== 共享工具 (所有页面引用) ====================
 // 兼容旧浏览器 - 纯 ES5 语法
 
+// ---------- 标签页管理 ----------
+var TabManager = {
+    tabs: [],
+    activeTabId: null,
+
+    // 初始化标签容器 (在页面布局中注入)
+    _injected: false,
+    _injectLayout: function() {
+        if (this._injected) return;
+        this._injected = true;
+        // 创建标签栏容器
+        var tabBar = document.createElement('div');
+        tabBar.id = 'tabBarContainer';
+        tabBar.style.display = 'none';
+        // 插入到 contentArea 之前
+        var content = document.getElementById('contentArea');
+        if (content && content.parentNode) {
+            content.parentNode.insertBefore(tabBar, content);
+        }
+        // contentArea 改为标签内容容器
+        if (content) {
+            content.style.position = 'relative';
+            content.style.padding = '0';
+            content.style.overflow = 'hidden';
+        }
+    },
+
+    // 打开或切换到标签
+    open: function(id, title, url) {
+        this._injectLayout();
+        // 已存在则切换
+        for (var i = 0; i < this.tabs.length; i++) {
+            if (this.tabs[i].id === id) {
+                this.switchTo(id);
+                this.renderBar();
+                return;
+            }
+        }
+        var content = document.getElementById('contentArea');
+        // 首次打开标签时, 将当前页面作为首页标签
+        if (!this._firstTabDone) {
+            this._firstTabDone = true;
+            var currentPath = location.pathname;
+            var currentPage = currentPath.substring(currentPath.lastIndexOf('/') + 1);
+            if (currentPage && currentPage.indexOf('.html') >= 0) {
+                var homeId = currentPage.replace('.html', '');
+                var homeLabel = this._getPageLabel(homeId);
+                this.tabs.push({ id: homeId, title: homeLabel, url: currentPath });
+                // 清空 contentArea 并创建首页 iframe
+                content.innerHTML = '';
+                var homeIframe = document.createElement('iframe');
+                homeIframe.className = 'tab-iframe';
+                homeIframe.setAttribute('data-tab', homeId);
+                homeIframe.src = currentPath;
+                homeIframe.style.cssText = 'width:100%;height:100%;border:none;display:block;';
+                content.appendChild(homeIframe);
+            }
+        }
+        // 创建新标签
+        this.tabs.push({ id: id, title: title, url: url });
+        // 隐藏所有已有 iframe
+        var oldFrames = content.querySelectorAll('.tab-iframe');
+        for (var j = 0; j < oldFrames.length; j++) oldFrames[j].style.display = 'none';
+        // 创建 iframe
+        var iframe = document.createElement('iframe');
+        iframe.className = 'tab-iframe';
+        iframe.setAttribute('data-tab', id);
+        iframe.src = url;
+        iframe.style.cssText = 'width:100%;height:100%;border:none;display:block;';
+        content.appendChild(iframe);
+        this.switchTo(id);
+        this.renderBar();
+    },
+
+    _getPageLabel: function(id) {
+        var map = {
+            'dashboard': '首页概览', 'departments': '部门管理', 'employee-identities': '人员身份',
+            'employees': '人员管理', 'leave-types': '假别维护', 'apply': '请假登记',
+            'leave-list': '请假记录', 'cancel': '销假管理', 'balance': '公休假额度',
+            'stats': '统计表', 'monthly': '月度签字表', 'summary': '汇总表',
+            'account': '修改密码', 'backup': '数据备份', 'users': '用户管理'
+        };
+        return map[id] || id;
+    },
+
+    // 切换标签
+    switchTo: function(id) {
+        this.activeTabId = id;
+        // 更新标签栏高亮
+        var btns = document.querySelectorAll('.tab-bar .tab-item');
+        for (var i = 0; i < btns.length; i++) {
+            btns[i].classList.toggle('active', btns[i].getAttribute('data-tab') === id);
+        }
+        // 显示对应 iframe, 隐藏其他
+        var frames = document.querySelectorAll('.tab-iframe');
+        for (var j = 0; j < frames.length; j++) {
+            var match = frames[j].getAttribute('data-tab') === id;
+            frames[j].style.display = match ? '' : 'none';
+            frames[j].style.width = '100%';
+            frames[j].style.height = '100%';
+            frames[j].style.border = 'none';
+        }
+        // 更新侧边栏高亮
+        var navBtns = document.querySelectorAll('.nav-btn');
+        for (var k = 0; k < navBtns.length; k++) {
+            navBtns[k].classList.remove('active');
+            if (navBtns[k].getAttribute('data-tab') === id) {
+                navBtns[k].classList.add('active');
+            }
+        }
+    },
+
+    // 关闭标签
+    close: function(id, e) {
+        if (e) { e.stopPropagation(); e.preventDefault(); }
+        var idx = -1;
+        for (var i = 0; i < this.tabs.length; i++) {
+            if (this.tabs[i].id === id) { idx = i; break; }
+        }
+        if (idx < 0) return;
+        this.tabs.splice(idx, 1);
+        // 移除 iframe
+        var frame = document.querySelector('.tab-iframe[data-tab="' + id + '"]');
+        if (frame) frame.remove();
+        // 移除 tab 按钮
+        var btn = document.querySelector('.tab-item[data-tab="' + id + '"]');
+        if (btn) btn.remove();
+        // 如果关闭的是当前激活的标签, 切换到其他
+        if (this.activeTabId === id) {
+            this.activeTabId = null;
+            if (this.tabs.length > 0) {
+                var next = idx < this.tabs.length ? idx : this.tabs.length - 1;
+                this.switchTo(this.tabs[next].id);
+            } else {
+                document.getElementById('contentArea').innerHTML =
+                    '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-3);font-size:14px;">请从左侧菜单选择功能</div>';
+            }
+        }
+    },
+
+    // 渲染标签栏
+    renderBar: function() {
+        var container = document.getElementById('tabBarContainer');
+        if (!container) return;
+        if (this.tabs.length === 0) {
+            container.innerHTML = '';
+            container.style.display = 'none';
+            return;
+        }
+        container.style.display = '';
+        var html = '<div class="tab-bar">';
+        for (var i = 0; i < this.tabs.length; i++) {
+            var t = this.tabs[i];
+            var activeCls = t.id === this.activeTabId ? ' active' : '';
+            html += '<div class="tab-item' + activeCls + '" data-tab="' + t.id + '" onclick="TabManager.switchTo(\'' + t.id + '\')">' +
+                '<span class="tab-title">' + t.title + '</span>' +
+                '<span class="tab-close" onclick="TabManager.close(\'' + t.id + '\', event)">&times;</span>' +
+                '</div>';
+        }
+        html += '</div>';
+        container.innerHTML = html;
+    }
+};
+
+// iframe 内页面检测: 如果当前页面在 iframe 中, 隐藏侧边栏和外壳
+(function() {
+    try {
+        if (window.self !== window.top) {
+            document.body.classList.add('in-iframe');
+        }
+    } catch(e) {
+        document.body.classList.add('in-iframe');
+    }
+})();
+
 // ---------- API 封装 ----------
 var Api = {
     get: function(url) { return Api.req(url, { method: 'GET' }); },
@@ -290,7 +465,14 @@ var Auth = {
                 return null;
             }
             self.user = status;
-            self.renderSidebar();
+            // iframe 内页面不渲染侧边栏
+            var inIframe = false;
+            try { inIframe = window.self !== window.top; } catch(e) { inIframe = true; }
+            if (!inIframe) {
+                self.renderSidebar();
+            } else {
+                document.body.classList.add('in-iframe');
+            }
             return status;
         }).catch(function(e) {
             window.location.href = '/login.html';
@@ -357,8 +539,9 @@ var Auth = {
             var html = '';
             for (var i = 0; i < items.length; i++) {
                 var href = items[i][0], label = items[i][1];
+                var tabId = href.replace('.html', '');
                 var active = (path.indexOf('/' + href) >= 0) ? ' active' : '';
-                html += '<a class="nav-btn' + active + '" href="/' + href + '">' + label + '</a>';
+                html += '<a class="nav-btn' + active + '" data-href="/' + href + '" data-tab="' + tabId + '" data-label="' + label + '" onclick="TabManager.open(\'' + tabId + '\',\'' + label + '\',\'' + '/' + href + '\')">' + label + '</a>';
             }
             return html;
         }

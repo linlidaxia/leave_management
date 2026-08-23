@@ -839,3 +839,106 @@ code {
     .btn { width: 100%; }
     .modal { width: 100%; max-width: 100%; border-radius: 0; }
 }
+
+/* ==================== 标签页系统 ==================== */
+/* 标签栏容器 */
+#tabBarContainer {
+    background: var(--ink);
+    border-bottom: 1px solid var(--ink-3);
+    min-height: 0;
+    flex-shrink: 0;
+}
+
+/* 标签栏 */
+.tab-bar {
+    display: flex;
+    align-items: stretch;
+    overflow-x: auto;
+    overflow-y: hidden;
+    min-height: 36px;
+    background: var(--ink-2);
+    scrollbar-width: none;
+}
+.tab-bar::-webkit-scrollbar { display: none; }
+
+/* 单个标签 */
+.tab-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 14px;
+    height: 36px;
+    font-size: 12.5px;
+    color: #8a92a6;
+    cursor: pointer;
+    white-space: nowrap;
+    border-right: 1px solid rgba(255,255,255,0.06);
+    transition: background 0.15s, color 0.15s;
+    user-select: none;
+    flex-shrink: 0;
+}
+.tab-item:hover {
+    background: rgba(255,255,255,0.06);
+    color: #c0c6d4;
+}
+.tab-item.active {
+    background: var(--paper);
+    color: var(--ink);
+    font-weight: 600;
+    border-bottom: 2px solid var(--gold);
+    margin-bottom: -1px;
+}
+
+/* 标签标题 */
+.tab-title {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 关闭按钮 */
+.tab-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    font-size: 14px;
+    line-height: 1;
+    color: inherit;
+    opacity: 0.4;
+    transition: opacity 0.15s, background 0.15s;
+}
+.tab-close:hover {
+    opacity: 1;
+    background: rgba(0,0,0,0.12);
+}
+.tab-item.active .tab-close {
+    opacity: 0.5;
+}
+.tab-item.active .tab-close:hover {
+    opacity: 1;
+    background: rgba(0,0,0,0.1);
+}
+
+/* iframe 容器中的页面 */
+.tab-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* iframe 内页面: 隐藏侧边栏和外壳 */
+body.in-iframe .sidebar,
+body.in-iframe #sidebarRoot .sidebar,
+body.in-iframe #tabBarContainer { display: none !important; }
+body.in-iframe .main-page { display: block !important; }
+body.in-iframe .content { margin-left: 0 !important; padding: 16px !important; }
+
+/* 侧边栏高亮: 标签对应的菜单项 */
+.nav-btn.active {
+    background: rgba(184, 148, 95, 0.15) !important;
+    color: var(--gold) !important;
+    font-weight: 600;
+}
