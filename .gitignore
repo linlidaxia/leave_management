@@ -1,3 +1,10 @@
 *.rar
 node_modules/
 publish/node_modules/
+publish/data.db
+publish/cookies.txt
+webapp/target/
+webapp/data.db
+webapp/leave-management.jar
+temp/
+*.class
