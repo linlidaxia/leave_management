@@ -46,11 +46,13 @@
 ### 业务管理
 
 - **部门管理**：增删改查 + Excel 批量导入
-- **人员管理**：增删改查 + 工龄自动计算 + 年假余额展示 + Excel 批量导入
+- **人员身份管理**：增删改查 + 与人员关联 + 跨页面筛选（请假记录/销假管理/公休假额度/人员管理均支持按身份筛选）+ Excel 导入支持身份列
+- **人员管理**：增删改查 + 工龄自动计算 + 年假余额展示 + Excel 批量导入（支持身份列）
 - **假别管理**：8 种预置假别 + 自定义假别 + 附件必需标记
-- **请假登记**：表单填写 + 天数自动计算 + 事假抵扣公休假预览 + 附件上传
-- **请假记录**：多条件查询 + 分页 + Excel 导出 + 审批 + 编辑 + 删除 + 附件管理
+- **请假登记**：表单填写 + 天数自动计算 + 事假抵扣公休假预览 + 附件上传 + 结束日期不能早于开始日期校验
+- **请假记录**：多条件查询 + 分页 + Excel 导出 + 审批 + 编辑 + 删除 + 附件管理 + **批量审批** + **批量删除**
 - **销假管理**：待销假列表 + 多条件筛选 + 销假登记 + 已销假记录
+- **历史记录导入**：支持导入已销假状态的请假记录（自动创建对应销假记录）
 
 ### 报表统计
 
@@ -64,6 +66,12 @@
 - **用户管理**：三级角色（ADMIN/USER/VIEWER）+ 密码修改
 - **数据备份**：一键备份 SQLite 数据库文件
 - **数据还原**：上传备份文件恢复数据
+
+### 界面交互
+
+- **标签页导航**：点击左侧菜单在右侧标签页打开页面，支持多标签切换和关闭
+- **自定义对话框**：替换原生 alert/confirm/prompt，使用 Toast 通知 + SVG 图标
+- **响应式布局**：支持 PC、平板、手机浏览器访问
 
 ### 业务规则
 
@@ -134,7 +142,8 @@ SQLite 数据库文件 `data.db` 位于 jar 同目录，启动时自动创建。
 | 表名 | 说明 | 关键字段 |
 |------|------|---------|
 | `departments` | 部门 | id, name, code |
-| `employees` | 员工 | id, name, department_id, work_start_date |
+| `employee_identities` | 人员身份 | id, name, code |
+| `employees` | 员工 | id, name, department_id, work_start_date, identity_id |
 | `leave_types` | 假别 | id, name, need_attachment |
 | `leave_applications` | 请假申请 | id, employee_id, leave_type_id, status, offset_annual |
 | `leave_cancellations` | 销假记录 | id, application_id, cancel_date, actual_days |
@@ -239,10 +248,13 @@ java -jar leave-management.jar --server.port=8080
 | POST | `/api/auth/logout` | 登出 |
 | GET | `/api/auth/status` | 当前用户状态 |
 | GET/POST | `/api/departments` | 部门列表/新建 |
+| GET/POST/DELETE | `/api/identities` | 人员身份列表/新建/删除 |
 | GET/POST | `/api/employees` | 员工列表/新建 |
 | GET | `/api/leave-types` | 假别列表 |
 | GET/POST | `/api/applications` | 请假记录列表/新建 |
 | POST | `/api/applications/{id}/approve` | 审批 |
+| POST | `/api/applications/batch-approve` | 批量审批 |
+| POST | `/api/applications/batch-delete` | 批量删除 |
 | POST | `/api/cancellations` | 销假登记 |
 | GET | `/api/cancellations/pending` | 待销假列表 |
 | GET | `/api/annual-balances` | 年假额度列表 |
@@ -298,6 +310,27 @@ taskkill /PID <进程ID> /F
 cd webapp
 mvn test
 ```
+
+---
+
+## 更新记录
+
+| 版本 | 日期 | 更新内容 |
+|------|------|---------|
+| v2.1 | 2026-08 | 标签页导航、人员身份管理、批量审批/删除、日期校验增强 |
+| v2.0 | 2026-08 | Web 版首版发布，完整复刻 Python 桌面版全部功能 |
+
+### v2.1 更新详情
+
+- **标签页导航**：点击左侧菜单在右侧标签页打开页面，支持多标签切换、关闭
+- **人员身份管理**：新增 employee_identities 表，支持增删改查，与人员关联，跨页面筛选
+- **批量审批**：请假记录页支持勾选多条一次性审批
+- **批量删除**：请假记录页支持勾选多条一次性删除
+- **日期校验**：请假登记和请假记录编辑时，结束日期不能早于开始日期
+- **历史记录导入**：支持导入已销假状态的请假记录（自动创建对应销假记录）
+- **分页优化**：分页控件始终显示，不足一页时显示总条数
+- **schema 清理**：移除有问题的触发器，数据库迁移升级
+- **iframe 兼容**：禁用 Spring Security X-Frame-Options 头，支持标签页 iframe 嵌套
 
 ---
 
