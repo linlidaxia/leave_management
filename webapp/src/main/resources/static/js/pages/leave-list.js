@@ -167,11 +167,14 @@
             html += '</div>';
 
             document.getElementById('contentArea').innerHTML = html;
-            if (deptId) document.getElementById('ll_dept').value = deptId;
+            if (year) document.getElementById('ll_year').value = year;
+            if (deptId) { document.getElementById('ll_dept').value = deptId; document.getElementById('ll_emp').innerHTML = buildEmpOpts(deptId); }
             if (empId) document.getElementById('ll_emp').value = empId;
             if (ltId) document.getElementById('ll_lt').value = ltId;
+            if (identityId) document.getElementById('ll_identity').value = identityId;
             if (status) document.getElementById('ll_status').value = status;
-            if (year) document.getElementById('ll_year').value = year;
+            if (sd) document.getElementById('ll_sd').value = sd;
+            if (ed) document.getElementById('ll_ed').value = ed;
 
             // 分页控件
             var listDiv = document.querySelector('#contentArea .card:last-child .table-wrap');

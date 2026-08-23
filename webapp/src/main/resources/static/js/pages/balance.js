@@ -49,6 +49,11 @@
             document.getElementById('contentArea').innerHTML = html;
             var tw = document.querySelector('#contentArea .table-wrap');
             if (tw) tw.insertAdjacentHTML('afterend', UI.pagination(pageInfo.total, currentPage, pageSize, 'balanceChangePage'));
+            // 恢复筛选条件
+            var sy = document.getElementById('b_year');
+            if (sy) sy.value = year;
+            var si = document.getElementById('b_identity');
+            if (si) si.value = identityId;
         });
     }
     window.load = load;

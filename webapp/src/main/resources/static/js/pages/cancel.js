@@ -129,6 +129,20 @@
             document.getElementById('contentArea').innerHTML = html;
             var tw = document.querySelector('#contentArea .card:first-child .table-wrap');
             if (tw) tw.insertAdjacentHTML('afterend', UI.pagination(pageInfo.total, currentPage, pageSize, 'cancelChangePage'));
+            // 恢复筛选条件
+            var sdDept = document.getElementById('c_dept');
+            if (sdDept) sdDept.value = deptId;
+            if (deptId) { var sdEmp = document.getElementById('c_emp'); if (sdEmp) sdEmp.innerHTML = buildEmpOpts(deptId); }
+            var sdEmp2 = document.getElementById('c_emp');
+            if (sdEmp2) sdEmp2.value = empId;
+            var sdLt = document.getElementById('c_lt');
+            if (sdLt) sdLt.value = ltId;
+            var sdIdentity = document.getElementById('c_identity');
+            if (sdIdentity) sdIdentity.value = identityId;
+            var sdSd = document.getElementById('c_sd');
+            if (sdSd) sdSd.value = sd;
+            var sdEd = document.getElementById('c_ed');
+            if (sdEd) sdEd.value = ed;
         });
     }
     window.load = load;

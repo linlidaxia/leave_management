@@ -81,6 +81,13 @@
             document.getElementById('contentArea').innerHTML = html;
             var tw = document.querySelector('#contentArea .table-wrap');
             if (tw) tw.insertAdjacentHTML('afterend', UI.pagination(pageInfo.total, currentPage, pageSize, 'empChangePage'));
+            // 恢复筛选条件
+            var sd = document.getElementById('e_dept');
+            if (sd) sd.value = deptId;
+            var si = document.getElementById('e_identity');
+            if (si) si.value = identityId;
+            var sk = document.getElementById('e_kw');
+            if (sk) sk.value = kw;
         });
     }
     window.load = load;
