@@ -75,7 +75,9 @@
             var rows = [];
             for (var i = 0; i < apps.length; i++) {
                 var a = apps[i];
+                var canCheck = isAdmin && a.status === '待审批';
                 rows.push([
+                    '<input type="checkbox" class="ll-check" data-id="' + a.id + '"' + (canCheck ? '' : ' disabled>') ,
                     a.id,
                     a.employeeName,
                     a.departmentName || '—',
@@ -115,6 +117,9 @@
             html += '<button class="btn btn-primary" onclick="load()">查询</button>';
             html += '<button class="btn btn-secondary" onclick="leaveListReset()">重置</button>';
             html += '<div style="flex:1;"></div>';
+            if (isAdmin) {
+                html += '<button class="btn btn-success" onclick="leaveListBatchApprove()">批量审批</button> ';
+            }
             html += '<button class="btn btn-gold" onclick="leaveListExport()">导出 Excel</button>';
             if (isAdmin) {
                 html += ' <button class="btn btn-secondary" onclick="leaveListImport()">导入历史记录</button>';
@@ -125,19 +130,19 @@
             // 列表
             html += '<div class="card" style="padding:0;">';
             html += UI.table(
-                ['ID', '姓名', '部门', '假别', '开始', '结束', '天数', '事由', '状态', '登记日期', '审批日期', '附件', '操作'],
+                ['<input type="checkbox" id="ll_check_all" onchange="leaveListToggleAll(this)">', 'ID', '姓名', '部门', '假别', '开始', '结束', '天数', '事由', '状态', '登记日期', '审批日期', '附件', '操作'],
                 rows,
                 [
-                    null, null, null, null, null, null, null, null, null, null, null,
+                    null, null, null, null, null, null, null, null, null, null, null, null,
                     // 附件列
                     function(val, row) {
-                        var app = row[11];
+                        var app = row[12];
                         var appId = app && app.id ? app.id : 0;
                         return '<span id="ll_attach_count_' + appId + '" data-app="' + appId + '">…</span>';
                     },
                     // 操作列
                     function(val, row) {
-                        var a = row[11];
+                        var a = row[12];
                         if (!isAdmin) return '<span class="text-muted">只读</span>';
                         var btns = '<button class="btn btn-sm btn-primary" onclick="leaveListEdit(' + a.id + ')">编辑</button>';
                         if (a.status === '待审批') btns += ' <button class="btn btn-sm btn-success" onclick="leaveListApprove(' + a.id + ')">审批</button>';
@@ -442,5 +447,27 @@
             }).catch(function() { failed++; }).then(function() { uploadOne(idx + 1); });
         }
         uploadOne(0);
+    };
+
+    // 全选/全不选
+    window.leaveListToggleAll = function(el) {
+        var boxes = document.querySelectorAll('.ll-check');
+        for (var i = 0; i < boxes.length; i++) {
+            if (!boxes[i].disabled) boxes[i].checked = el.checked;
+        }
+    };
+
+    // 批量审批
+    window.leaveListBatchApprove = function() {
+        var boxes = document.querySelectorAll('.ll-check:checked');
+        var ids = [];
+        for (var i = 0; i < boxes.length; i++) ids.push(parseInt(boxes[i].getAttribute('data-id')));
+        if (ids.length === 0) { UI.toast('请先勾选需要审批的记录', 'error'); return; }
+        UI.confirm('确认批量审批选中的 ' + ids.length + ' 条记录?', function() {
+            Api.post('/api/applications/batch-approve', ids).then(function(r) {
+                if (r.success) { UI.toast(r.message, 'success'); load(); }
+                else UI.toast(r.message, 'error');
+            });
+        });
     };
 })();

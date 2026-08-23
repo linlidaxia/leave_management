@@ -190,4 +190,29 @@ public class LeaveApplicationRepository {
                 "WHERE la.offset_annual > 0 AND CAST(strftime('%Y', la.start_date) AS INTEGER)=?";
         return jdbc.query(sql, MAPPER, year);
     }
+
+    /**
+     * 查找与指定员工和日期范围重叠的请假记录 (排除已销假)
+     * 重叠条件: newStart <= existingEnd AND existingStart <= newEnd
+     * @param excludeId 排除的申请ID (编辑时排除自身)
+     */
+    public List<LeaveApplication> findOverlapping(Long employeeId, String startDate, String endDate, Long excludeId) {
+        StringBuilder sql = new StringBuilder(
+                "SELECT " + SELECT_COLS +
+                "FROM leave_applications la " +
+                "INNER JOIN employees e ON la.employee_id = e.id " +
+                "INNER JOIN leave_types lt ON la.leave_type_id = lt.id " +
+                "LEFT JOIN departments d ON e.department_id = d.id " +
+                "WHERE la.employee_id=? AND la.status != '已销假' " +
+                "AND la.start_date <= ? AND la.end_date >= ?");
+        List<Object> params = new ArrayList<>();
+        params.add(employeeId);
+        params.add(endDate);
+        params.add(startDate);
+        if (excludeId != null) {
+            sql.append(" AND la.id != ?");
+            params.add(excludeId);
+        }
+        return jdbc.query(sql.toString(), MAPPER, params.toArray());
+    }
 }

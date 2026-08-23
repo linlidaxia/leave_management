@@ -16,10 +16,12 @@ import com.leavemgmt.repository.LeaveCancellationRepository;
 import com.leavemgmt.repository.LeaveTypeRepository;
 import com.leavemgmt.repository.StatsRepository;
 import com.leavemgmt.util.LeaveCalculator;
+import com.leavemgmt.util.SqliteDateUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -295,6 +297,16 @@ public class LeaveService {
                                   LocalDate start, String startPeriod,
                                   LocalDate end, String endPeriod,
                                   String reason) {
+        // 时间重叠校验 (排除已销假)
+        List<LeaveApplication> overlaps = appRepo.findOverlapping(empId,
+                SqliteDateUtil.toText(start), SqliteDateUtil.toText(end), null);
+        if (!overlaps.isEmpty()) {
+            LeaveApplication conflict = overlaps.get(0);
+            throw new IllegalStateException(
+                String.format("该员工在 %s ~ %s 已有请假记录(%s), 时间冲突, 无法重复登记",
+                        conflict.getStartDate(), conflict.getEndDate(), conflict.getLeaveTypeName()));
+        }
+
         double days = LeaveCalculator.calculateLeaveDays(start, startPeriod, end, endPeriod);
         LeaveType lt = ltRepo.findById(leaveTypeId);
         int year = start.getYear();
@@ -357,6 +369,22 @@ public class LeaveService {
     @Transactional
     public void approveApplication(Long appId, String approver) {
         appRepo.updateStatus(appId, "已审批", approver);
+    }
+
+    @Transactional
+    public void batchApproveApplications(List<Long> ids, String approver) {
+        List<String> failedIds = new ArrayList<>();
+        for (Long id : ids) {
+            LeaveApplication a = appRepo.findById(id);
+            if (a == null || !"待审批".equals(a.getStatus())) {
+                failedIds.add(String.valueOf(id));
+                continue;
+            }
+            appRepo.updateStatus(id, "已审批", approver);
+        }
+        if (!failedIds.isEmpty()) {
+            throw new IllegalStateException("以下记录审批失败(不存在或非待审批状态): " + String.join(", ", failedIds));
+        }
     }
 
     /**

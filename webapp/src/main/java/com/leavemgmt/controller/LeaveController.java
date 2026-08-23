@@ -437,6 +437,25 @@ public class LeaveController {
         return m;
     }
 
+    @PostMapping("/applications/batch-approve")
+    @PreAuthorize("hasAnyRole('ADMIN','USER')")
+    public Map<String, Object> batchApprove(@RequestBody List<Long> ids,
+                                             @AuthenticationPrincipal(expression = "username") String approver) {
+        try {
+            service.batchApproveApplications(ids, approver);
+            Map<String, Object> m = new HashMap<>();
+            m.put("success", true);
+            m.put("message", "批量审批成功，共审批 " + ids.size() + " 条记录");
+            m.put("count", ids.size());
+            return m;
+        } catch (Exception e) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("success", false);
+            m.put("message", e.getMessage());
+            return m;
+        }
+    }
+
     @DeleteMapping("/applications/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','USER')")
     public Map<String, Object> deleteApplication(@PathVariable Long id) {
