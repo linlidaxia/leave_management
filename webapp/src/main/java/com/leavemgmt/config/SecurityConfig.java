@@ -31,7 +31,8 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable())  // 内网单机应用, 所有 API 走 session 认证
+            .csrf(csrf -> csrf.disable())
+            .headers(headers -> headers.frameOptions(frame -> frame.disable()))  // 允许 iframe 嵌套 (标签页系统)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                     "/", "/index.html", "/login.html", "/favicon.ico",
