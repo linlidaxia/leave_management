@@ -384,6 +384,7 @@ public class LeaveService {
 
     /**
      * 插入历史请假记录 (导入用, 不扣减年假额度)
+     * 已销假记录同时写入 leave_cancellations 表
      */
     @Transactional
     public Long insertHistoricalApplication(LeaveApplication a, LocalDate approveDate) {
@@ -393,6 +394,12 @@ public class LeaveService {
             if (approveDate != null) {
                 appRepo.updateApproveDate(id, approveDate);
             }
+        }
+        // 已销假: 同时创建销假记录, 以便在销假管理页面显示
+        if ("已销假".equals(a.getStatus())) {
+            LocalDate cancelDate = a.getEndDate() != null ? a.getEndDate() : LocalDate.now();
+            double actualDays = a.getDays() != null ? a.getDays() : 0;
+            cancelRepo.insert(id, cancelDate, actualDays, "历史导入");
         }
         return id;
     }
