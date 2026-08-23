@@ -5,115 +5,92 @@
 var TabManager = {
     tabs: [],
     activeTabId: null,
-
-    // 初始化标签容器 (在页面布局中注入)
     _injected: false,
-    _injectLayout: function() {
-        if (this._injected) return;
-        this._injected = true;
-        // 创建标签栏容器
-        var tabBar = document.createElement('div');
-        tabBar.id = 'tabBarContainer';
-        tabBar.style.display = 'none';
-        // 插入到 contentArea 之前
-        var content = document.getElementById('contentArea');
-        if (content && content.parentNode) {
-            content.parentNode.insertBefore(tabBar, content);
-        }
-        // contentArea 改为标签内容容器
-        if (content) {
-            content.style.position = 'relative';
-            content.style.padding = '0';
-            content.style.overflow = 'hidden';
-        }
+
+    _labels: {
+        'dashboard': '首页概览', 'departments': '部门管理', 'employee-identities': '人员身份',
+        'employees': '人员管理', 'leave-types': '假别维护', 'apply': '请假登记',
+        'leave-list': '请假记录', 'cancel': '销假管理', 'balance': '公休假额度',
+        'stats': '统计表', 'monthly': '月度签字表', 'summary': '汇总表',
+        'account': '修改密码', 'backup': '数据备份', 'users': '用户管理'
     },
 
-    // 打开或切换到标签
+    // 初始化: 在 contentArea 内部构建标签栏 + iframe 区域
+    _init: function() {
+        if (this._injected) return;
+        this._injected = true;
+        var content = document.getElementById('contentArea');
+        if (!content) return;
+        var origHtml = content.innerHTML;
+        // 改为纵向 flex: 标签栏 + iframe 区域
+        content.style.cssText = 'display:flex;flex-direction:column;padding:0;overflow:hidden;';
+        // 标签栏
+        var bar = document.createElement('div');
+        bar.id = 'tabBarContainer';
+        bar.style.display = 'none';
+        content.appendChild(bar);
+        // iframe 区域
+        var wrap = document.createElement('div');
+        wrap.id = 'tabFrameWrap';
+        wrap.style.cssText = 'flex:1;position:relative;overflow:hidden;background:var(--paper);';
+        content.appendChild(wrap);
+        this._homeHtml = origHtml;
+    },
+
     open: function(id, title, url) {
-        this._injectLayout();
+        this._init();
         // 已存在则切换
         for (var i = 0; i < this.tabs.length; i++) {
-            if (this.tabs[i].id === id) {
-                this.switchTo(id);
-                this.renderBar();
-                return;
-            }
+            if (this.tabs[i].id === id) { this.switchTo(id); return; }
         }
-        var content = document.getElementById('contentArea');
-        // 首次打开标签时, 将当前页面作为首页标签
+        var wrap = document.getElementById('tabFrameWrap');
+        // 首次: 将当前页面作为首页标签 (用 iframe 重新加载)
         if (!this._firstTabDone) {
             this._firstTabDone = true;
-            var currentPath = location.pathname;
-            var currentPage = currentPath.substring(currentPath.lastIndexOf('/') + 1);
-            if (currentPage && currentPage.indexOf('.html') >= 0) {
-                var homeId = currentPage.replace('.html', '');
-                var homeLabel = this._getPageLabel(homeId);
-                this.tabs.push({ id: homeId, title: homeLabel, url: currentPath });
-                // 清空 contentArea 并创建首页 iframe
-                content.innerHTML = '';
-                var homeIframe = document.createElement('iframe');
-                homeIframe.className = 'tab-iframe';
-                homeIframe.setAttribute('data-tab', homeId);
-                homeIframe.src = currentPath;
-                homeIframe.style.cssText = 'width:100%;height:100%;border:none;display:block;';
-                content.appendChild(homeIframe);
+            var cur = location.pathname;
+            var curPage = cur.substring(cur.lastIndexOf('/') + 1);
+            if (curPage && curPage.indexOf('.html') >= 0) {
+                var homeId = curPage.replace('.html', '');
+                this.tabs.push({ id: homeId, title: this._labels[homeId] || homeId, url: cur });
+                this._addIframe(wrap, homeId, cur);
             }
         }
-        // 创建新标签
+        // 新标签
         this.tabs.push({ id: id, title: title, url: url });
+        this._addIframe(wrap, id, url);
+        this.switchTo(id);
+    },
+
+    _addIframe: function(wrap, id, url) {
         // 隐藏所有已有 iframe
-        var oldFrames = content.querySelectorAll('.tab-iframe');
-        for (var j = 0; j < oldFrames.length; j++) oldFrames[j].style.display = 'none';
-        // 创建 iframe
+        var old = wrap.querySelectorAll('iframe');
+        for (var i = 0; i < old.length; i++) old[i].style.display = 'none';
         var iframe = document.createElement('iframe');
         iframe.className = 'tab-iframe';
         iframe.setAttribute('data-tab', id);
         iframe.src = url;
-        iframe.style.cssText = 'width:100%;height:100%;border:none;display:block;';
-        content.appendChild(iframe);
-        this.switchTo(id);
-        this.renderBar();
+        iframe.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;border:none;';
+        wrap.appendChild(iframe);
     },
 
-    _getPageLabel: function(id) {
-        var map = {
-            'dashboard': '首页概览', 'departments': '部门管理', 'employee-identities': '人员身份',
-            'employees': '人员管理', 'leave-types': '假别维护', 'apply': '请假登记',
-            'leave-list': '请假记录', 'cancel': '销假管理', 'balance': '公休假额度',
-            'stats': '统计表', 'monthly': '月度签字表', 'summary': '汇总表',
-            'account': '修改密码', 'backup': '数据备份', 'users': '用户管理'
-        };
-        return map[id] || id;
-    },
-
-    // 切换标签
     switchTo: function(id) {
         this.activeTabId = id;
-        // 更新标签栏高亮
-        var btns = document.querySelectorAll('.tab-bar .tab-item');
-        for (var i = 0; i < btns.length; i++) {
-            btns[i].classList.toggle('active', btns[i].getAttribute('data-tab') === id);
+        var wrap = document.getElementById('tabFrameWrap');
+        if (wrap) {
+            var frames = wrap.querySelectorAll('iframe');
+            for (var i = 0; i < frames.length; i++) {
+                frames[i].style.display = frames[i].getAttribute('data-tab') === id ? 'block' : 'none';
+            }
         }
-        // 显示对应 iframe, 隐藏其他
-        var frames = document.querySelectorAll('.tab-iframe');
-        for (var j = 0; j < frames.length; j++) {
-            var match = frames[j].getAttribute('data-tab') === id;
-            frames[j].style.display = match ? '' : 'none';
-            frames[j].style.width = '100%';
-            frames[j].style.height = '100%';
-            frames[j].style.border = 'none';
-        }
-        // 更新侧边栏高亮
+        this.renderBar();
+        // 侧边栏高亮
         var navBtns = document.querySelectorAll('.nav-btn');
         for (var k = 0; k < navBtns.length; k++) {
             navBtns[k].classList.remove('active');
-            if (navBtns[k].getAttribute('data-tab') === id) {
-                navBtns[k].classList.add('active');
-            }
+            if (navBtns[k].getAttribute('data-tab') === id) navBtns[k].classList.add('active');
         }
     },
 
-    // 关闭标签
     close: function(id, e) {
         if (e) { e.stopPropagation(); e.preventDefault(); }
         var idx = -1;
@@ -122,59 +99,38 @@ var TabManager = {
         }
         if (idx < 0) return;
         this.tabs.splice(idx, 1);
-        // 移除 iframe
-        var frame = document.querySelector('.tab-iframe[data-tab="' + id + '"]');
+        var frame = document.querySelector('#tabFrameWrap iframe[data-tab="' + id + '"]');
         if (frame) frame.remove();
-        // 移除 tab 按钮
-        var btn = document.querySelector('.tab-item[data-tab="' + id + '"]');
-        if (btn) btn.remove();
-        // 如果关闭的是当前激活的标签, 切换到其他
         if (this.activeTabId === id) {
             this.activeTabId = null;
             if (this.tabs.length > 0) {
                 var next = idx < this.tabs.length ? idx : this.tabs.length - 1;
                 this.switchTo(this.tabs[next].id);
             } else {
-                document.getElementById('contentArea').innerHTML =
+                document.getElementById('tabBarContainer').style.display = 'none';
+                document.getElementById('tabFrameWrap').innerHTML =
                     '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-3);font-size:14px;">请从左侧菜单选择功能</div>';
             }
         }
     },
 
-    // 渲染标签栏
     renderBar: function() {
-        var container = document.getElementById('tabBarContainer');
-        if (!container) return;
-        if (this.tabs.length === 0) {
-            container.innerHTML = '';
-            container.style.display = 'none';
-            return;
-        }
-        container.style.display = '';
-        var html = '<div class="tab-bar">';
+        var c = document.getElementById('tabBarContainer');
+        if (!c) return;
+        if (this.tabs.length === 0) { c.style.display = 'none'; return; }
+        c.style.display = '';
+        var h = '<div class="tab-bar">';
         for (var i = 0; i < this.tabs.length; i++) {
             var t = this.tabs[i];
-            var activeCls = t.id === this.activeTabId ? ' active' : '';
-            html += '<div class="tab-item' + activeCls + '" data-tab="' + t.id + '" onclick="TabManager.switchTo(\'' + t.id + '\')">' +
+            var cls = t.id === this.activeTabId ? ' active' : '';
+            h += '<div class="tab-item' + cls + '" data-tab="' + t.id + '" onclick="TabManager.switchTo(\'' + t.id + '\')">' +
                 '<span class="tab-title">' + t.title + '</span>' +
-                '<span class="tab-close" onclick="TabManager.close(\'' + t.id + '\', event)">&times;</span>' +
-                '</div>';
+                '<span class="tab-close" onclick="TabManager.close(\'' + t.id + '\',event)">&times;</span></div>';
         }
-        html += '</div>';
-        container.innerHTML = html;
+        h += '</div>';
+        c.innerHTML = h;
     }
 };
-
-// iframe 内页面检测: 如果当前页面在 iframe 中, 隐藏侧边栏和外壳
-(function() {
-    try {
-        if (window.self !== window.top) {
-            document.body.classList.add('in-iframe');
-        }
-    } catch(e) {
-        document.body.classList.add('in-iframe');
-    }
-})();
 
 // ---------- API 封装 ----------
 var Api = {
