@@ -1,7 +1,10 @@
 package com.leavemgmt;
 
+import com.leavemgmt.service.DatabaseMigrationService;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
 
 /**
  * 行政事业单位请销假管理系统 v2.0 (Web Edition)
@@ -19,5 +22,14 @@ public class LeaveManagementApplication {
         System.out.println("  Login: admin / admin123");
         System.out.println("==================================================");
         System.out.println();
+    }
+
+    @Bean
+    public CommandLineRunner runMigration(DatabaseMigrationService migrationService) {
+        return args -> {
+            System.out.println(">>> 检查数据库版本...");
+            migrationService.migrate();
+            System.out.println(">>> 数据库版本: v" + migrationService.getCurrentVersion());
+        };
     }
 }
