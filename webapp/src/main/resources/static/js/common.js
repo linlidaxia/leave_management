@@ -144,8 +144,12 @@ var UI = {
     // ---------- 分页控件 ----------
     pagination: function(total, page, size, onPageChange) {
         var totalPages = Math.ceil(total / size) || 1;
-        if (totalPages <= 1) return '';
         var html = '<div class="pagination" style="display:flex;align-items:center;justify-content:center;gap:4px;padding:10px 0;">';
+        if (totalPages <= 1) {
+            html += '<span class="text-muted" style="font-size:12px;">共 ' + total + ' 条</span>';
+            html += '</div>';
+            return html;
+        }
         // 上一页
         html += '<button class="btn btn-sm btn-secondary"' + (page === 0 ? ' disabled' : '') + ' onclick="' + (page > 0 ? onPageChange + '(' + (page - 1) + ')' : '') + '">上一页</button>';
         // 页码
