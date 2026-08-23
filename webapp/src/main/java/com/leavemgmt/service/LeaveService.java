@@ -392,6 +392,13 @@ public class LeaveService {
         }
     }
 
+    @Transactional
+    public void batchDeleteApplications(List<Long> ids) {
+        for (Long id : ids) {
+            deleteApplication(id);
+        }
+    }
+
     /**
      * 删除请假申请 (恢复事假抵扣的天数 / 公休假已用天数, 同时级联删除销假记录和附件)
      */

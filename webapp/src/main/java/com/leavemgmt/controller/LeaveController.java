@@ -456,6 +456,24 @@ public class LeaveController {
         }
     }
 
+    @PostMapping("/applications/batch-delete")
+    @PreAuthorize("hasAnyRole('ADMIN','USER')")
+    public Map<String, Object> batchDelete(@RequestBody List<Long> ids) {
+        try {
+            service.batchDeleteApplications(ids);
+            Map<String, Object> m = new HashMap<>();
+            m.put("success", true);
+            m.put("message", "批量删除成功，共删除 " + ids.size() + " 条记录");
+            m.put("count", ids.size());
+            return m;
+        } catch (Exception e) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("success", false);
+            m.put("message", e.getMessage());
+            return m;
+        }
+    }
+
     @DeleteMapping("/applications/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','USER')")
     public Map<String, Object> deleteApplication(@PathVariable Long id) {

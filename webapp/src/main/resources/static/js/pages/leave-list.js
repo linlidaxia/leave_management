@@ -119,6 +119,7 @@
             html += '<div style="flex:1;"></div>';
             if (isAdmin) {
                 html += '<button class="btn btn-success" onclick="leaveListBatchApprove()">批量审批</button> ';
+                html += '<button class="btn btn-danger" onclick="leaveListBatchDelete()">批量删除</button> ';
             }
             html += '<button class="btn btn-gold" onclick="leaveListExport()">导出 Excel</button>';
             if (isAdmin) {
@@ -458,6 +459,20 @@
         for (var i = 0; i < boxes.length; i++) {
             if (!boxes[i].disabled) boxes[i].checked = el.checked;
         }
+    };
+
+    // 批量删除
+    window.leaveListBatchDelete = function() {
+        var boxes = document.querySelectorAll('.ll-check:checked');
+        var ids = [];
+        for (var i = 0; i < boxes.length; i++) ids.push(parseInt(boxes[i].getAttribute('data-id')));
+        if (ids.length === 0) { UI.toast('请先勾选需要删除的记录', 'error'); return; }
+        UI.confirm('确定要删除选中的 ' + ids.length + ' 条记录吗? 如涉及事假抵扣公休假将恢复抵扣天数，同时删除关联附件。', function() {
+            Api.post('/api/applications/batch-delete', ids).then(function(r) {
+                if (r.success) { UI.toast(r.message, 'success'); load(); }
+                else UI.toast(r.message, 'error');
+            });
+        });
     };
 
     // 批量审批
