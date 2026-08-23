@@ -134,11 +134,3 @@ CREATE TABLE IF NOT EXISTS users (
     enabled         INTEGER DEFAULT 1,
     created_at      TEXT DEFAULT (datetime('now','localtime'))
 );
-
--- ==================== 数据库迁移: 添加 identity_id 字段 ====================
--- SQLite 不支持 IF NOT EXISTS 列级操作, 使用触发器模拟
--- 如果 employees 表已有 identity_id 列则忽略
-CREATE TRIGGER IF NOT EXISTS trg_add_identity_id AFTER INSERT ON employees
-BEGIN
-    SELECT RAISE(IGNORE);
-END;
