@@ -4,6 +4,7 @@
     var depts = [];
     var lts = [];
     var emps = [];
+    var identities = [];
     var pageSize = 15;
     var currentPage = 0;
 
@@ -13,13 +14,15 @@
         return Promise.all([
             Api.get('/api/departments'),
             Api.get('/api/leave-types'),
-            Api.get('/api/employees')
+            Api.get('/api/employees'),
+            Api.get('/api/identities')
         ]);
     }).then(function(results) {
         if (!results) return;
         depts = results[0];
         lts = results[1];
         emps = results[2];
+        identities = results[3] || [];
         return load();
     }).catch(function(e) { console.error(e); });
 
@@ -44,6 +47,12 @@
         return opts.join('');
     }
 
+    function buildIdentityOpts() {
+        var opts = ['<option value="">全部</option>'];
+        for (var i = 0; i < identities.length; i++) opts.push('<option value="' + identities[i].id + '">' + identities[i].name + '</option>');
+        return opts.join('');
+    }
+
     function buildStatusOpts() {
         return '<option value="">全部</option><option value="待审批">待审批</option><option value="已审批">已审批</option><option value="已销假">已销假</option>';
     }
@@ -53,6 +62,7 @@
         var deptId = document.getElementById('ll_dept') ? document.getElementById('ll_dept').value : '';
         var empId = document.getElementById('ll_emp') ? document.getElementById('ll_emp').value : '';
         var ltId = document.getElementById('ll_lt') ? document.getElementById('ll_lt').value : '';
+        var identityId = document.getElementById('ll_identity') ? document.getElementById('ll_identity').value : '';
         var status = document.getElementById('ll_status') ? document.getElementById('ll_status').value : '';
         var sd = document.getElementById('ll_sd') ? document.getElementById('ll_sd').value : '';
         var ed = document.getElementById('ll_ed') ? document.getElementById('ll_ed').value : '';
@@ -62,6 +72,7 @@
         if (deptId) params.push('deptId=' + deptId);
         if (empId) params.push('employeeId=' + empId);
         if (ltId) params.push('leaveTypeId=' + ltId);
+        if (identityId) params.push('identityId=' + identityId);
         if (status) params.push('status=' + encodeURIComponent(status));
         if (sd) params.push('startDate=' + sd);
         if (ed) params.push('endDate=' + ed);
@@ -107,6 +118,7 @@
             html += '<div class="form-group" style="width:140px;flex-shrink:0;"><label>部门</label><select id="ll_dept" onchange="onLeaveListDeptChange()">' + buildDeptOpts() + '</select></div>';
             html += '<div class="form-group" style="width:140px;flex-shrink:0;"><label>人员</label><select id="ll_emp">' + buildEmpOpts(deptId) + '</select></div>';
             html += '<div class="form-group" style="width:120px;flex-shrink:0;"><label>假别</label><select id="ll_lt">' + buildLtOpts() + '</select></div>';
+            html += '<div class="form-group" style="width:120px;flex-shrink:0;"><label>身份</label><select id="ll_identity">' + buildIdentityOpts() + '</select></div>';
             html += '<div class="form-group" style="width:100px;flex-shrink:0;"><label>状态</label><select id="ll_status">' + buildStatusOpts() + '</select></div>';
             html += '</div>';
             html += '<div class="form-row" style="gap:6px;margin-top:4px;flex-wrap:wrap;">';
@@ -184,6 +196,7 @@
         document.getElementById('ll_dept').value = '';
         document.getElementById('ll_emp').value = '';
         document.getElementById('ll_lt').value = '';
+        document.getElementById('ll_identity').value = '';
         document.getElementById('ll_status').value = '';
         document.getElementById('ll_sd').value = '';
         document.getElementById('ll_ed').value = '';

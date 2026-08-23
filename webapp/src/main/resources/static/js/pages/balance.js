@@ -1,17 +1,30 @@
 // 公休假额度
 (function() {
     var isAdmin = false;
+    var identities = [];
     var pageSize = 15;
     var currentPage = 0;
 
     Auth.requireAuth().then(function(user) {
         if (!user) return;
         isAdmin = !Auth.isViewer();
-        return load(UI.currentYear());
+        return Api.get('/api/identities').then(function(list) {
+            identities = list || [];
+            return load(UI.currentYear());
+        });
     }).catch(function(e) { console.error(e); });
 
+    function buildIdentityOpts() {
+        var opts = ['<option value="">全部</option>'];
+        for (var i = 0; i < identities.length; i++) opts.push('<option value="' + identities[i].id + '">' + identities[i].name + '</option>');
+        return opts.join('');
+    }
+
     function load(year) {
-        return Api.get('/api/annual-balances?year=' + year + '&page=' + currentPage + '&size=' + pageSize).then(function(resp) {
+        var identityId = document.getElementById('b_identity') ? document.getElementById('b_identity').value : '';
+        var params = 'year=' + year;
+        if (identityId) params += '&identityId=' + identityId;
+        return Api.get('/api/annual-balances?' + params + '&page=' + currentPage + '&size=' + pageSize).then(function(resp) {
             var pageInfo = UI.parsePageData(resp);
             var rows = pageInfo.rows;
             var tRows = [];
@@ -23,6 +36,7 @@
             html += '<div class="page-tip">公休假规则: 工龄 &lt; 10 年 = 5 天 · 10~20 年 = 10 天 · ≥ 20 年 = 15 天</div>';
             html += '<div class="toolbar">' +
                 '<label>年度</label><input type="number" id="b_year" value="' + year + '" style="width:80px;">' +
+                '<label>身份</label><select id="b_identity">' + buildIdentityOpts() + '</select>' +
                 '<button class="btn btn-primary" onclick="balanceQuery()">查询</button>' +
                 (isAdmin ? '<button class="btn btn-gold" onclick="balanceInit()">初始化额度</button>' : '') +
                 '<button class="btn btn-secondary" onclick="balanceExport()">导出 Excel</button></div>';

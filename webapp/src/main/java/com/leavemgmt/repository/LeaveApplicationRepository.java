@@ -48,18 +48,24 @@ public class LeaveApplicationRepository {
 
     private static final String SELECT_COLS =
             "la.id, la.employee_id, e.name AS emp_name, d.name AS dept_name, " +
+            "e.identity_id, ei.name AS identity_name, " +
             "la.leave_type_id, lt.name AS lt_name, " +
             "la.start_date, la.start_period, la.end_date, la.end_period, " +
             "la.days, la.reason, la.status, la.apply_date, la.approver, la.approve_date, " +
             "la.offset_annual, la.remark ";
 
     public List<LeaveApplication> findAll(Integer year, Long deptId, String status) {
+        return findAll(year, deptId, status, null);
+    }
+
+    public List<LeaveApplication> findAll(Integer year, Long deptId, String status, Long identityId) {
         StringBuilder sql = new StringBuilder(
                 "SELECT " + SELECT_COLS +
                 "FROM leave_applications la " +
                 "INNER JOIN employees e ON la.employee_id = e.id " +
                 "INNER JOIN leave_types lt ON la.leave_type_id = lt.id " +
-                "LEFT JOIN departments d ON e.department_id = d.id WHERE 1=1");
+                "LEFT JOIN departments d ON e.department_id = d.id " +
+                "LEFT JOIN employee_identities ei ON e.identity_id = ei.id WHERE 1=1");
         List<Object> params = new ArrayList<>();
         if (year != null) {
             sql.append(" AND CAST(strftime('%Y', la.start_date) AS INTEGER)=?");
@@ -68,6 +74,10 @@ public class LeaveApplicationRepository {
         if (deptId != null) {
             sql.append(" AND e.department_id=?");
             params.add(deptId);
+        }
+        if (identityId != null) {
+            sql.append(" AND e.identity_id=?");
+            params.add(identityId);
         }
         if (status != null && !status.isBlank()) {
             sql.append(" AND la.status=?");
@@ -83,7 +93,8 @@ public class LeaveApplicationRepository {
                 "FROM leave_applications la " +
                 "INNER JOIN employees e ON la.employee_id = e.id " +
                 "INNER JOIN leave_types lt ON la.leave_type_id = lt.id " +
-                "LEFT JOIN departments d ON e.department_id = d.id WHERE la.id=?",
+                "LEFT JOIN departments d ON e.department_id = d.id " +
+                "LEFT JOIN employee_identities ei ON e.identity_id = ei.id WHERE la.id=?",
                 MAPPER, id);
         return list.isEmpty() ? null : list.get(0);
     }
@@ -138,6 +149,7 @@ public class LeaveApplicationRepository {
                 "INNER JOIN employees e ON la.employee_id = e.id " +
                 "INNER JOIN leave_types lt ON la.leave_type_id = lt.id " +
                 "LEFT JOIN departments d ON e.department_id = d.id " +
+                "LEFT JOIN employee_identities ei ON e.identity_id = ei.id " +
                 "WHERE la.status='已审批' AND la.id NOT IN (SELECT application_id FROM leave_cancellations) " +
                 "ORDER BY la.start_date DESC";
         return jdbc.query(sql, MAPPER);
@@ -147,12 +159,19 @@ public class LeaveApplicationRepository {
     public List<LeaveApplication> findPendingCancellationsFiltered(
             Long deptId, Long employeeId, Long leaveTypeId,
             String startDate, String endDate) {
+        return findPendingCancellationsFiltered(deptId, employeeId, leaveTypeId, startDate, endDate, null);
+    }
+
+    public List<LeaveApplication> findPendingCancellationsFiltered(
+            Long deptId, Long employeeId, Long leaveTypeId,
+            String startDate, String endDate, Long identityId) {
         StringBuilder sql = new StringBuilder(
                 "SELECT " + SELECT_COLS +
                 "FROM leave_applications la " +
                 "INNER JOIN employees e ON la.employee_id = e.id " +
                 "INNER JOIN leave_types lt ON la.leave_type_id = lt.id " +
                 "LEFT JOIN departments d ON e.department_id = d.id " +
+                "LEFT JOIN employee_identities ei ON e.identity_id = ei.id " +
                 "WHERE la.status='已审批' AND la.id NOT IN (SELECT application_id FROM leave_cancellations)");
         List<Object> params = new ArrayList<>();
         if (deptId != null) {
@@ -166,6 +185,10 @@ public class LeaveApplicationRepository {
         if (leaveTypeId != null) {
             sql.append(" AND la.leave_type_id=?");
             params.add(leaveTypeId);
+        }
+        if (identityId != null) {
+            sql.append(" AND e.identity_id=?");
+            params.add(identityId);
         }
         if (startDate != null && !startDate.isBlank()) {
             sql.append(" AND la.start_date>=?");
@@ -187,6 +210,7 @@ public class LeaveApplicationRepository {
                 "INNER JOIN employees e ON la.employee_id = e.id " +
                 "INNER JOIN leave_types lt ON la.leave_type_id = lt.id " +
                 "LEFT JOIN departments d ON e.department_id = d.id " +
+                "LEFT JOIN employee_identities ei ON e.identity_id = ei.id " +
                 "WHERE la.offset_annual > 0 AND CAST(strftime('%Y', la.start_date) AS INTEGER)=?";
         return jdbc.query(sql, MAPPER, year);
     }
@@ -203,6 +227,7 @@ public class LeaveApplicationRepository {
                 "INNER JOIN employees e ON la.employee_id = e.id " +
                 "INNER JOIN leave_types lt ON la.leave_type_id = lt.id " +
                 "LEFT JOIN departments d ON e.department_id = d.id " +
+                "LEFT JOIN employee_identities ei ON e.identity_id = ei.id " +
                 "WHERE la.employee_id=? AND la.status != '已销假' " +
                 "AND la.start_date <= ? AND la.end_date >= ?");
         List<Object> params = new ArrayList<>();

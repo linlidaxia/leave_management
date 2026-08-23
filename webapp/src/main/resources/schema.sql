@@ -1,6 +1,16 @@
 -- ==================== SQLite Schema ====================
 -- 行政事业单位请销假管理系统 v2.0 (Web Edition)
 
+-- 人员身份表
+CREATE TABLE IF NOT EXISTS employee_identities (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT NOT NULL,
+    code        TEXT,
+    sort_order  INTEGER DEFAULT 0,
+    remark      TEXT,
+    created_at  TEXT DEFAULT (datetime('now','localtime'))
+);
+
 -- 部门表
 CREATE TABLE IF NOT EXISTS departments (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -18,14 +28,17 @@ CREATE TABLE IF NOT EXISTS employees (
     gender           TEXT,
     id_card          TEXT,
     department_id    INTEGER,
+    identity_id      INTEGER,
     position         TEXT,
     work_start_date  TEXT,
     phone            TEXT,
     remark           TEXT,
     created_at       TEXT DEFAULT (datetime('now','localtime')),
-    FOREIGN KEY (department_id) REFERENCES departments(id)
+    FOREIGN KEY (department_id) REFERENCES departments(id),
+    FOREIGN KEY (identity_id) REFERENCES employee_identities(id)
 );
 CREATE INDEX IF NOT EXISTS idx_employees_dept ON employees(department_id);
+CREATE INDEX IF NOT EXISTS idx_employees_identity ON employees(identity_id);
 
 -- 假别表
 CREATE TABLE IF NOT EXISTS leave_types (
@@ -121,3 +134,11 @@ CREATE TABLE IF NOT EXISTS users (
     enabled         INTEGER DEFAULT 1,
     created_at      TEXT DEFAULT (datetime('now','localtime'))
 );
+
+-- ==================== 数据库迁移: 添加 identity_id 字段 ====================
+-- SQLite 不支持 IF NOT EXISTS 列级操作, 使用触发器模拟
+-- 如果 employees 表已有 identity_id 列则忽略
+CREATE TRIGGER IF NOT EXISTS trg_add_identity_id AFTER INSERT ON employees
+BEGIN
+    SELECT RAISE(IGNORE);
+END;

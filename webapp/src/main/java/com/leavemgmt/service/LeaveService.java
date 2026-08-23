@@ -51,6 +51,7 @@ public class LeaveService {
     private final AnnualLeaveBalanceRepository balRepo;
     private final StatsRepository statsRepo;
     private final LeaveAttachmentRepository attachRepo;
+    private final com.leavemgmt.repository.EmployeeIdentityRepository identityRepo;
 
     public LeaveService(DepartmentRepository deptRepo,
                         EmployeeRepository empRepo,
@@ -59,7 +60,8 @@ public class LeaveService {
                         LeaveCancellationRepository cancelRepo,
                         AnnualLeaveBalanceRepository balRepo,
                         StatsRepository statsRepo,
-                        LeaveAttachmentRepository attachRepo) {
+                        LeaveAttachmentRepository attachRepo,
+                        com.leavemgmt.repository.EmployeeIdentityRepository identityRepo) {
         this.deptRepo = deptRepo;
         this.empRepo = empRepo;
         this.ltRepo = ltRepo;
@@ -68,6 +70,35 @@ public class LeaveService {
         this.balRepo = balRepo;
         this.statsRepo = statsRepo;
         this.attachRepo = attachRepo;
+        this.identityRepo = identityRepo;
+    }
+
+    // ==================== 人员身份管理 ====================
+
+    public List<com.leavemgmt.model.EmployeeIdentity> listIdentities() {
+        return identityRepo.findAll();
+    }
+
+    @Transactional
+    public Long saveIdentity(com.leavemgmt.model.EmployeeIdentity ei) {
+        com.leavemgmt.model.EmployeeIdentity existing = identityRepo.findByName(ei.getName());
+        if (existing != null && !existing.getId().equals(ei.getId())) {
+            throw new IllegalStateException("身份名称「" + ei.getName() + "」已存在");
+        }
+        if (ei.getId() == null) {
+            return identityRepo.insert(ei);
+        }
+        identityRepo.update(ei);
+        return ei.getId();
+    }
+
+    @Transactional
+    public void deleteIdentity(Long id) {
+        long count = identityRepo.countEmployees(id);
+        if (count > 0) {
+            throw new IllegalStateException("该身份下还有 " + count + " 名员工，无法删除");
+        }
+        identityRepo.delete(id);
     }
 
     // ==================== 首页概览 ====================
@@ -106,6 +137,10 @@ public class LeaveService {
         return empRepo.findAll(deptId, keyword);
     }
 
+    public List<Employee> listEmployees(Long deptId, String keyword, Long identityId) {
+        return empRepo.findAll(deptId, keyword, identityId);
+    }
+
     public Employee getEmployee(Long id) {
         return empRepo.findById(id);
     }
@@ -123,7 +158,11 @@ public class LeaveService {
 
     /** 员工 + 工龄 + 公休假天数 (用于列表展示) */
     public List<Map<String, Object>> listEmployeesWithLeave(Long deptId, String keyword) {
-        List<Employee> emps = empRepo.findAll(deptId, keyword);
+        return listEmployeesWithLeave(deptId, keyword, null);
+    }
+
+    public List<Map<String, Object>> listEmployeesWithLeave(Long deptId, String keyword, Long identityId) {
+        List<Employee> emps = empRepo.findAll(deptId, keyword, identityId);
         List<Map<String, Object>> result = new java.util.ArrayList<>();
         int currentYear = java.time.LocalDate.now().getYear();
         for (Employee e : emps) {
@@ -134,6 +173,8 @@ public class LeaveService {
             m.put("idCard", e.getIdCard());
             m.put("departmentId", e.getDepartmentId());
             m.put("departmentName", e.getDepartmentName());
+            m.put("identityId", e.getIdentityId());
+            m.put("identityName", e.getIdentityName());
             m.put("position", e.getPosition());
             m.put("workStartDate", e.getWorkStartDate());
             m.put("workYears", getWorkYears(e));
@@ -220,6 +261,10 @@ public class LeaveService {
 
     public List<LeaveApplication> listApplications(Integer year, Long deptId, String status) {
         return appRepo.findAll(year, deptId, status);
+    }
+
+    public List<LeaveApplication> listApplications(Integer year, Long deptId, String status, Long identityId) {
+        return appRepo.findAll(year, deptId, status, identityId);
     }
 
     public LeaveApplication getApplication(Long id) {
@@ -453,7 +498,13 @@ public class LeaveService {
     public List<LeaveApplication> listPendingCancellationsFiltered(
             Long deptId, Long employeeId, Long leaveTypeId,
             String startDate, String endDate) {
-        return appRepo.findPendingCancellationsFiltered(deptId, employeeId, leaveTypeId, startDate, endDate);
+        return listPendingCancellationsFiltered(deptId, employeeId, leaveTypeId, startDate, endDate, null);
+    }
+
+    public List<LeaveApplication> listPendingCancellationsFiltered(
+            Long deptId, Long employeeId, Long leaveTypeId,
+            String startDate, String endDate, Long identityId) {
+        return appRepo.findPendingCancellationsFiltered(deptId, employeeId, leaveTypeId, startDate, endDate, identityId);
     }
 
     public List<LeaveCancellation> listCancellations() {
@@ -472,6 +523,10 @@ public class LeaveService {
 
     public List<AnnualLeaveBalance> listAnnualBalances(int year, Long deptId) {
         return balRepo.findByYear(year, deptId);
+    }
+
+    public List<AnnualLeaveBalance> listAnnualBalances(int year, Long deptId, Long identityId) {
+        return balRepo.findByYear(year, deptId, identityId);
     }
 
     /**

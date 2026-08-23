@@ -132,13 +132,13 @@ public class DataImportService {
             Sheet ws = wb.createSheet("人员导入模板");
 
             // 标题行
-            ws.addMergedRegion(new CellRangeAddress(0, 0, 0, 7));
+            ws.addMergedRegion(new CellRangeAddress(0, 0, 0, 8));
             Cell title = ws.createRow(0).createCell(0);
             title.setCellValue("人员批量导入模板");
             title.setCellStyle(titleStyle(wb));
 
             // 表头
-            String[] headers = {"姓名*", "性别", "身份证号", "部门名称*", "职务", "参加工作时间*", "电话", "备注"};
+            String[] headers = {"姓名*", "性别", "身份证号", "部门名称*", "人员身份", "职务", "参加工作时间*", "电话", "备注"};
             Row hr = ws.createRow(1);
             for (int i = 0; i < headers.length; i++) {
                 Cell c = hr.createCell(i);
@@ -148,8 +148,8 @@ public class DataImportService {
 
             // 示例数据
             String[][] samples = {
-                {"张三", "男", "110101198001010001", "办公室", "科员", "2010-03-15", "13800000001", "工龄15年"},
-                {"李四", "女", "110101199501010002", "人事科", "科员", "2020-07-01", "13800000002", ""}
+                {"张三", "男", "110101198001010001", "办公室", "干部", "科员", "2010-03-15", "13800000001", "工龄15年"},
+                {"李四", "女", "110101199501010002", "人事科", "职工", "科员", "2020-07-01", "13800000002", ""}
             };
             for (int i = 0; i < samples.length; i++) {
                 Row r = ws.createRow(2 + i);
@@ -163,10 +163,10 @@ public class DataImportService {
             // 说明行
             Row noteRow = ws.createRow(5);
             Cell note = noteRow.createCell(0);
-            note.setCellValue("说明: 1)带*列为必填 2)性别:男/女 3)部门名称需与系统中已有部门名称一致 4)参加工作时间格式: YYYY-MM-DD 5)首行表头不可删除");
+            note.setCellValue("说明: 1)带*列为必填 2)性别:男/女 3)部门名称需与系统中已有部门名称一致 4)人员身份需与系统中已有身份一致(可为空) 5)参加工作时间格式: YYYY-MM-DD 6)首行表头不可删除");
             note.setCellStyle(noteStyle(wb));
 
-            int[] widths = {12, 8, 22, 16, 12, 16, 14, 24};
+            int[] widths = {12, 8, 22, 16, 14, 12, 16, 14, 24};
             for (int i = 0; i < widths.length; i++) ws.setColumnWidth(i, widths[i] * 512);
             wb.write(out);
             return out.toByteArray();
@@ -185,6 +185,12 @@ public class DataImportService {
             deptName2Id.put(d.getName(), d.getId());
         }
         ctx.put("deptName2Id", deptName2Id);
+        // 人员身份名称 -> ID 映射
+        Map<String, Long> identityName2Id = new HashMap<>();
+        for (com.leavemgmt.model.EmployeeIdentity ei : leaveService.listIdentities()) {
+            identityName2Id.put(ei.getName(), ei.getId());
+        }
+        ctx.put("identityName2Id", identityName2Id);
 
         return importExcel(in, "人员", (row, rowNum, context) -> parseAndSaveEmployee(row, rowNum, context), ctx);
     }
@@ -211,8 +217,18 @@ public class DataImportService {
             r.fail("部门「" + deptName + "」不存在, 请先在部门管理中添加");
             return r;
         }
-        String position = getCellString(row, 4).trim();
-        String workStartStr = getCellString(row, 5).trim();
+        String identityName = getCellString(row, 4).trim();
+        Long identityId = null;
+        if (!identityName.isEmpty()) {
+            Map<String, Long> identityName2Id = (Map<String, Long>) ctx.get("identityName2Id");
+            identityId = identityName2Id.get(identityName);
+            if (identityId == null) {
+                r.fail("人员身份「" + identityName + "」不存在, 请先在人员身份管理中添加");
+                return r;
+            }
+        }
+        String position = getCellString(row, 5).trim();
+        String workStartStr = getCellString(row, 6).trim();
         if (workStartStr.isEmpty()) {
             r.fail("参加工作时间不能为空");
             return r;
@@ -224,14 +240,15 @@ public class DataImportService {
             r.fail("参加工作时间格式错误: " + workStartStr + " (应为 YYYY-MM-DD)");
             return r;
         }
-        String phone = getCellString(row, 6).trim();
-        String remark = getCellString(row, 7).trim();
+        String phone = getCellString(row, 7).trim();
+        String remark = getCellString(row, 8).trim();
 
         Employee e = new Employee();
         e.setName(name);
         e.setGender(gender);
         e.setIdCard(idCard);
         e.setDepartmentId(deptId);
+        e.setIdentityId(identityId);
         e.setPosition(position);
         e.setWorkStartDate(workStart);
         e.setPhone(phone);

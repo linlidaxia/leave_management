@@ -9,6 +9,8 @@ public class Employee {
     private String idCard;
     private Long departmentId;
     private String departmentName;   // join field, not in db
+    private Long identityId;
+    private String identityName;     // join field
     private String position;
     private LocalDate workStartDate;
     private String phone;
@@ -28,6 +30,10 @@ public class Employee {
     public void setDepartmentId(Long departmentId) { this.departmentId = departmentId; }
     public String getDepartmentName() { return departmentName; }
     public void setDepartmentName(String departmentName) { this.departmentName = departmentName; }
+    public Long getIdentityId() { return identityId; }
+    public void setIdentityId(Long identityId) { this.identityId = identityId; }
+    public String getIdentityName() { return identityName; }
+    public void setIdentityName(String identityName) { this.identityName = identityName; }
     public String getPosition() { return position; }
     public void setPosition(String position) { this.position = position; }
     public LocalDate getWorkStartDate() { return workStartDate; }

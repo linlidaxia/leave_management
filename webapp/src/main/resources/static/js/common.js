@@ -331,6 +331,7 @@ var Auth = {
             { id: 'biz', label: '业务管理', items: [
                 ['dashboard.html', '首页概览'],
                 ['departments.html', '部门管理'],
+                ['employee-identities.html', '人员身份'],
                 ['employees.html', '人员管理'],
                 ['leave-types.html', '假别维护'],
                 ['apply.html', '请假登记'],

@@ -32,18 +32,27 @@ public class AnnualLeaveBalanceRepository {
     }
 
     public List<AnnualLeaveBalance> findByYear(int year, Long deptId) {
+        return findByYear(year, deptId, null);
+    }
+
+    public List<AnnualLeaveBalance> findByYear(int year, Long deptId, Long identityId) {
         StringBuilder sql = new StringBuilder(
                 "SELECT alb.id, alb.employee_id, e.name AS emp_name, d.name AS dept_name, " +
                 "alb.year_val, alb.work_years, alb.total_days, alb.used_days, alb.remaining_days, alb.remark " +
                 "FROM annual_leave_balance alb " +
                 "INNER JOIN employees e ON alb.employee_id = e.id " +
                 "LEFT JOIN departments d ON e.department_id = d.id " +
+                "LEFT JOIN employee_identities ei ON e.identity_id = ei.id " +
                 "WHERE alb.year_val=?");
         List<Object> params = new java.util.ArrayList<>();
         params.add(year);
         if (deptId != null) {
             sql.append(" AND e.department_id=?");
             params.add(deptId);
+        }
+        if (identityId != null) {
+            sql.append(" AND e.identity_id=?");
+            params.add(identityId);
         }
         sql.append(" ORDER BY e.name");
         return jdbc.query(sql.toString(), MAPPER, params.toArray());

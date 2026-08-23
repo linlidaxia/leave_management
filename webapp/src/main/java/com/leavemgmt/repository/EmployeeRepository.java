@@ -26,6 +26,9 @@ public class EmployeeRepository {
         long deptId = rs.getLong("department_id");
         e.setDepartmentId(rs.wasNull() ? null : deptId);
         e.setDepartmentName(rs.getString("dept_name"));
+        long identityId = rs.getLong("identity_id");
+        e.setIdentityId(rs.wasNull() ? null : identityId);
+        e.setIdentityName(rs.getString("identity_name"));
         e.setPosition(rs.getString("position"));
         e.setWorkStartDate(SqliteDateUtil.fromText(rs.getString("work_start_date")));
         e.setPhone(rs.getString("phone"));
@@ -38,14 +41,24 @@ public class EmployeeRepository {
     }
 
     public List<Employee> findAll(Long deptId, String keyword) {
+        return findAll(deptId, keyword, null);
+    }
+
+    public List<Employee> findAll(Long deptId, String keyword, Long identityId) {
         StringBuilder sql = new StringBuilder(
                 "SELECT e.id, e.name, e.gender, e.id_card, e.department_id, " +
-                "d.name AS dept_name, e.position, e.work_start_date, e.phone, e.remark " +
-                "FROM employees e LEFT JOIN departments d ON e.department_id = d.id WHERE 1=1");
+                "d.name AS dept_name, e.identity_id, ei.name AS identity_name, " +
+                "e.position, e.work_start_date, e.phone, e.remark " +
+                "FROM employees e LEFT JOIN departments d ON e.department_id = d.id " +
+                "LEFT JOIN employee_identities ei ON e.identity_id = ei.id WHERE 1=1");
         java.util.List<Object> params = new java.util.ArrayList<>();
         if (deptId != null) {
             sql.append(" AND e.department_id=?");
             params.add(deptId);
+        }
+        if (identityId != null) {
+            sql.append(" AND e.identity_id=?");
+            params.add(identityId);
         }
         if (keyword != null && !keyword.isBlank()) {
             sql.append(" AND (e.name LIKE ? OR e.id_card LIKE ?)");
@@ -60,8 +73,10 @@ public class EmployeeRepository {
     public Employee findById(Long id) {
         List<Employee> list = jdbc.query(
                 "SELECT e.id, e.name, e.gender, e.id_card, e.department_id, " +
-                "d.name AS dept_name, e.position, e.work_start_date, e.phone, e.remark " +
-                "FROM employees e LEFT JOIN departments d ON e.department_id = d.id WHERE e.id=?",
+                "d.name AS dept_name, e.identity_id, ei.name AS identity_name, " +
+                "e.position, e.work_start_date, e.phone, e.remark " +
+                "FROM employees e LEFT JOIN departments d ON e.department_id = d.id " +
+                "LEFT JOIN employee_identities ei ON e.identity_id = ei.id WHERE e.id=?",
                 MAPPER, id);
         return list.isEmpty() ? null : list.get(0);
     }
@@ -87,17 +102,18 @@ public class EmployeeRepository {
         KeyHolder kh = new GeneratedKeyHolder();
         jdbc.update(conn -> {
             PreparedStatement ps = conn.prepareStatement(
-                    "INSERT INTO employees (name, gender, id_card, department_id, position, work_start_date, phone, remark) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO employees (name, gender, id_card, department_id, identity_id, position, work_start_date, phone, remark) " +
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     Statement.RETURN_GENERATED_KEYS);
             ps.setString(1, e.getName());
             ps.setString(2, e.getGender());
             ps.setString(3, e.getIdCard());
             ps.setObject(4, e.getDepartmentId());
-            ps.setString(5, e.getPosition());
-            ps.setString(6, SqliteDateUtil.toText(e.getWorkStartDate()));
-            ps.setString(7, e.getPhone());
-            ps.setString(8, e.getRemark());
+            ps.setObject(5, e.getIdentityId());
+            ps.setString(6, e.getPosition());
+            ps.setString(7, SqliteDateUtil.toText(e.getWorkStartDate()));
+            ps.setString(8, e.getPhone());
+            ps.setString(9, e.getRemark());
             return ps;
         }, kh);
         Number key = kh.getKey();
@@ -106,8 +122,8 @@ public class EmployeeRepository {
 
     public int update(Employee e) {
         return jdbc.update(
-                "UPDATE employees SET name=?, gender=?, id_card=?, department_id=?, position=?, work_start_date=?, phone=?, remark=? WHERE id=?",
-                e.getName(), e.getGender(), e.getIdCard(), e.getDepartmentId(), e.getPosition(),
+                "UPDATE employees SET name=?, gender=?, id_card=?, department_id=?, identity_id=?, position=?, work_start_date=?, phone=?, remark=? WHERE id=?",
+                e.getName(), e.getGender(), e.getIdCard(), e.getDepartmentId(), e.getIdentityId(), e.getPosition(),
                 SqliteDateUtil.toText(e.getWorkStartDate()), e.getPhone(), e.getRemark(), e.getId());
     }
 

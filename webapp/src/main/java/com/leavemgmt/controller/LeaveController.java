@@ -92,15 +92,56 @@ public class LeaveController {
         }
     }
 
+    // ==================== 人员身份管理 ====================
+
+    @GetMapping("/identities")
+    public List<com.leavemgmt.model.EmployeeIdentity> listIdentities() {
+        return service.listIdentities();
+    }
+
+    @PostMapping("/identities")
+    @PreAuthorize("hasAnyRole('ADMIN','USER')")
+    public Map<String, Object> saveIdentity(@RequestBody com.leavemgmt.model.EmployeeIdentity ei) {
+        try {
+            Long id = service.saveIdentity(ei);
+            Map<String, Object> m = new HashMap<>();
+            m.put("success", true);
+            m.put("id", id);
+            return m;
+        } catch (IllegalStateException e) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("success", false);
+            m.put("message", e.getMessage());
+            return m;
+        }
+    }
+
+    @DeleteMapping("/identities/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','USER')")
+    public Map<String, Object> deleteIdentity(@PathVariable Long id) {
+        try {
+            service.deleteIdentity(id);
+            Map<String, Object> m = new HashMap<>();
+            m.put("success", true);
+            return m;
+        } catch (IllegalStateException e) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("success", false);
+            m.put("message", e.getMessage());
+            return m;
+        }
+    }
+
     // ==================== 人员管理 ====================
 
     @GetMapping("/employees")
     public Object listEmployees(
             @RequestParam(required = false) Long deptId,
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long identityId,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size) {
-        java.util.List<java.util.Map<String, Object>> all = service.listEmployeesWithLeave(deptId, keyword);
+        java.util.List<java.util.Map<String, Object>> all = service.listEmployeesWithLeave(deptId, keyword, identityId);
         if (page != null && size != null && size > 0) {
             int total = all.size();
             int fromIndex = Math.min(page * size, total);
@@ -360,9 +401,10 @@ public class LeaveController {
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Long deptId,
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) Long identityId,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size) {
-        List<LeaveApplication> all = service.listApplications(year, deptId, status);
+        List<LeaveApplication> all = service.listApplications(year, deptId, status, identityId);
         if (page != null && size != null && size > 0) {
             int total = all.size();
             int fromIndex = Math.min(page * size, total);
@@ -492,15 +534,17 @@ public class LeaveController {
             @RequestParam(required = false) Long leaveTypeId,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) Long identityId,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size) {
         java.util.List<LeaveApplication> all;
         if (deptId == null && employeeId == null && leaveTypeId == null
+                && identityId == null
                 && (startDate == null || startDate.isBlank())
                 && (endDate == null || endDate.isBlank())) {
             all = service.listPendingCancellations();
         } else {
-            all = service.listPendingCancellationsFiltered(deptId, employeeId, leaveTypeId, startDate, endDate);
+            all = service.listPendingCancellationsFiltered(deptId, employeeId, leaveTypeId, startDate, endDate, identityId);
         }
         if (page != null && size != null && size > 0) {
             int total = all.size();
@@ -542,9 +586,10 @@ public class LeaveController {
     public Object listBalances(
             @RequestParam int year,
             @RequestParam(required = false) Long deptId,
+            @RequestParam(required = false) Long identityId,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size) {
-        java.util.List<AnnualLeaveBalance> all = service.listAnnualBalances(year, deptId);
+        java.util.List<AnnualLeaveBalance> all = service.listAnnualBalances(year, deptId, identityId);
         if (page != null && size != null && size > 0) {
             int total = all.size();
             int fromIndex = Math.min(page * size, total);

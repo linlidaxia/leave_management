@@ -2,16 +2,25 @@
 (function() {
     var isAdmin = false;
     var depts = [];
+    var identities = [];
     var deptOpts = '';
+    var identityOpts = '';
 
     Auth.requireAuth().then(function(user) {
         if (!user) return;
         isAdmin = !Auth.isViewer();
-        return Api.get('/api/departments').then(function(list) {
-            depts = list;
+        return Promise.all([
+            Api.get('/api/departments'),
+            Api.get('/api/identities')
+        ]).then(function(results) {
+            depts = results[0];
+            identities = results[1];
             var opts = ['<option value="">全部</option>'];
-            for (var i = 0; i < list.length; i++) opts.push('<option value="' + list[i].id + '">' + list[i].name + '</option>');
+            for (var i = 0; i < depts.length; i++) opts.push('<option value="' + depts[i].id + '">' + depts[i].name + '</option>');
             deptOpts = opts.join('');
+            var iopts = ['<option value="">全部</option>'];
+            for (var j = 0; j < identities.length; j++) iopts.push('<option value="' + identities[j].id + '">' + identities[j].name + '</option>');
+            identityOpts = iopts.join('');
             return load();
         });
     }).catch(function(e) { console.error(e); });
@@ -21,9 +30,11 @@
 
     function load() {
         var deptId = document.getElementById('e_dept') ? document.getElementById('e_dept').value : '';
+        var identityId = document.getElementById('e_identity') ? document.getElementById('e_identity').value : '';
         var kw = document.getElementById('e_kw') ? document.getElementById('e_kw').value.trim() : '';
         var params = [];
         if (deptId) params.push('deptId=' + deptId);
+        if (identityId) params.push('identityId=' + identityId);
         params.push('keyword=' + encodeURIComponent(kw));
         params.push('page=' + currentPage);
         params.push('size=' + pageSize);
@@ -37,7 +48,7 @@
                 var e = emps[i];
                 var remainingStyle = e.annualRemaining < 3 ? 'color:var(--danger);font-weight:600;' : '';
                 rows.push([
-                    e.id, e.name, e.gender||'—', e.idCard||'—', e.departmentName||'—', e.position||'—',
+                    e.id, e.name, e.gender||'—', e.idCard||'—', e.departmentName||'—', e.identityName||'—', e.position||'—',
                     UI.fmtDate(e.workStartDate), e.workYears,
                     UI.fmtNum(e.annualTotalActual, 1),
                     '<span style="' + (e.annualUsed > 0 ? 'color:var(--warning);font-weight:600;' : '') + '">' + UI.fmtNum(e.annualUsed, 1) + '</span>',
@@ -49,6 +60,7 @@
             html += '<div class="page-tip">提示: 系统根据参加工作时间自动计算工龄；公休假额度按规则计算, 需在「公休假额度」中初始化后精确统计</div>';
             html += '<div class="toolbar">' +
                 '<label>部门</label><select id="e_dept">' + deptOpts + '</select>' +
+                '<label>身份</label><select id="e_identity">' + identityOpts + '</select>' +
                 '<label>搜索</label><input id="e_kw" placeholder="姓名/身份证号">' +
                 '<button class="btn btn-primary" onclick="load()">查询</button>';
             if (isAdmin) {
@@ -57,10 +69,10 @@
             }
             html += '</div>';
             html += UI.table(
-                ['ID', '姓名', '性别', '身份证号', '部门', '职务', '参加工作时间', '工龄', '当年额度(天)', '已请(天)', '剩余(天)', '电话', '操作'],
+                ['ID', '姓名', '性别', '身份证号', '部门', '身份', '职务', '参加工作时间', '工龄', '当年额度(天)', '已请(天)', '剩余(天)', '电话', '操作'],
                 rows,
-                [null,null,null,null,null,null,null,null,null,null,null,null, function(val, row) {
-                    var e = row[12];
+                [null,null,null,null,null,null,null,null,null,null,null,null,null, function(val, row) {
+                    var e = row[13];
                     if (!isAdmin) return '<span class="text-muted">只读</span>';
                     return '<button class="btn btn-sm btn-primary" onclick="empEdit(' + e.id + ')">编辑</button> ' +
                            '<button class="btn btn-sm btn-danger" onclick="empDelete(' + e.id + ',\'' + (e.name||'').replace(/'/g,"\\'") + '\')">删除</button>';
@@ -76,7 +88,7 @@
     window.empChangePage = function(p) { currentPage = p; load(); };
 
     window.empEdit = function(id) {
-        var initData = { name: '', gender: '男', idCard: '', departmentId: null, position: '', workStartDate: '', phone: '', remark: '' };
+        var initData = { name: '', gender: '男', idCard: '', departmentId: null, identityId: null, position: '', workStartDate: '', phone: '', remark: '' };
         var p = id ? Api.get('/api/employees').then(function(list) {
             for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
             return initData;
@@ -87,6 +99,10 @@
             for (var i = 0; i < depts.length; i++) {
                 opts.push('<option value="' + depts[i].id + '"' + (e.departmentId === depts[i].id ? ' selected' : '') + '>' + depts[i].name + '</option>');
             }
+            var iopts = ['<option value="">-- 请选择 --</option>'];
+            for (var j = 0; j < identities.length; j++) {
+                iopts.push('<option value="' + identities[j].id + '"' + (e.identityId === identities[j].id ? ' selected' : '') + '>' + identities[j].name + '</option>');
+            }
             UI.modal(id ? '编辑人员' : '添加人员',
                 '<div class="form-row">' +
                     '<div class="form-group"><label>姓名 *</label><input id="e_name" value="' + (e.name||'').replace(/"/g,'&quot;') + '"></div>' +
@@ -95,10 +111,13 @@
                 '<div class="form-group"><label>身份证号</label><input id="e_idcard" value="' + (e.idCard||'').replace(/"/g,'&quot;') + '"></div>' +
                 '<div class="form-row">' +
                     '<div class="form-group"><label>部门</label><select id="e_dept_sel">' + opts.join('') + '</select></div>' +
-                    '<div class="form-group"><label>职务</label><input id="e_position" value="' + (e.position||'').replace(/"/g,'&quot;') + '"></div>' +
+                    '<div class="form-group"><label>人员身份</label><select id="e_identity_sel">' + iopts.join('') + '</select></div>' +
                 '</div>' +
                 '<div class="form-row">' +
+                    '<div class="form-group"><label>职务</label><input id="e_position" value="' + (e.position||'').replace(/"/g,'&quot;') + '"></div>' +
                     '<div class="form-group"><label>参加工作时间 *</label><input type="date" id="e_workstart" value="' + UI.fmtDate(e.workStartDate) + '"></div>' +
+                '</div>' +
+                '<div class="form-row">' +
                     '<div class="form-group"><label>电话</label><input id="e_phone" value="' + (e.phone||'').replace(/"/g,'&quot;') + '"></div>' +
                 '</div>' +
                 '<div class="form-group"><label>备注</label><input id="e_remark" value="' + (e.remark||'').replace(/"/g,'&quot;') + '"></div>',
@@ -106,11 +125,13 @@
                     var name = form.querySelector('#e_name').value.trim();
                     if (!name) { UI.toast('请输入姓名', 'error'); throw new Error(); }
                     var deptVal = form.querySelector('#e_dept_sel').value;
+                    var identityVal = form.querySelector('#e_identity_sel').value;
                     return Api.post('/api/employees', {
                         id: id || null, name: name,
                         gender: form.querySelector('#e_gender').value,
                         idCard: form.querySelector('#e_idcard').value.trim(),
                         departmentId: deptVal ? parseInt(deptVal) : null,
+                        identityId: identityVal ? parseInt(identityVal) : null,
                         position: form.querySelector('#e_position').value.trim(),
                         workStartDate: form.querySelector('#e_workstart').value || null,
                         phone: form.querySelector('#e_phone').value.trim(),

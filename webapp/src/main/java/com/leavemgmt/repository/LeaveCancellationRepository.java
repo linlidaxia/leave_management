@@ -48,6 +48,7 @@ public class LeaveCancellationRepository {
                 "INNER JOIN employees e ON la.employee_id = e.id " +
                 "INNER JOIN leave_types lt ON la.leave_type_id = lt.id " +
                 "LEFT JOIN departments d ON e.department_id = d.id " +
+                "LEFT JOIN employee_identities ei ON e.identity_id = ei.id " +
                 "ORDER BY lc.cancel_date DESC, lc.id DESC";
         return jdbc.query(sql, MAPPER);
     }
