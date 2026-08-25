@@ -263,8 +263,9 @@ public class LeaveService {
         return appRepo.findAll(year, deptId, status);
     }
 
-    public List<LeaveApplication> listApplications(Integer year, Long deptId, String status, Long identityId) {
-        return appRepo.findAll(year, deptId, status, identityId);
+    public List<LeaveApplication> listApplications(Integer year, Long deptId, Long employeeId,
+            Long leaveTypeId, String status, Long identityId, String startDate, String endDate) {
+        return appRepo.findAll(year, deptId, employeeId, leaveTypeId, status, identityId, startDate, endDate);
     }
 
     public LeaveApplication getApplication(Long id) {
@@ -525,8 +526,8 @@ public class LeaveService {
         return balRepo.findByYear(year, deptId);
     }
 
-    public List<AnnualLeaveBalance> listAnnualBalances(int year, Long deptId, Long identityId) {
-        return balRepo.findByYear(year, deptId, identityId);
+    public List<AnnualLeaveBalance> listAnnualBalances(int year, Long deptId, Long employeeId, Long identityId) {
+        return balRepo.findByYear(year, deptId, employeeId, identityId);
     }
 
     /**

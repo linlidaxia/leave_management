@@ -55,10 +55,11 @@ public class LeaveApplicationRepository {
             "la.offset_annual, la.remark ";
 
     public List<LeaveApplication> findAll(Integer year, Long deptId, String status) {
-        return findAll(year, deptId, status, null);
+        return findAll(year, deptId, null, null, status, null, null, null);
     }
 
-    public List<LeaveApplication> findAll(Integer year, Long deptId, String status, Long identityId) {
+    public List<LeaveApplication> findAll(Integer year, Long deptId, Long employeeId,
+            Long leaveTypeId, String status, Long identityId, String startDate, String endDate) {
         StringBuilder sql = new StringBuilder(
                 "SELECT " + SELECT_COLS +
                 "FROM leave_applications la " +
@@ -75,6 +76,14 @@ public class LeaveApplicationRepository {
             sql.append(" AND e.department_id=?");
             params.add(deptId);
         }
+        if (employeeId != null) {
+            sql.append(" AND la.employee_id=?");
+            params.add(employeeId);
+        }
+        if (leaveTypeId != null) {
+            sql.append(" AND la.leave_type_id=?");
+            params.add(leaveTypeId);
+        }
         if (identityId != null) {
             sql.append(" AND e.identity_id=?");
             params.add(identityId);
@@ -82,6 +91,14 @@ public class LeaveApplicationRepository {
         if (status != null && !status.isBlank()) {
             sql.append(" AND la.status=?");
             params.add(status);
+        }
+        if (startDate != null && !startDate.isBlank()) {
+            sql.append(" AND la.start_date>=?");
+            params.add(startDate);
+        }
+        if (endDate != null && !endDate.isBlank()) {
+            sql.append(" AND la.end_date<=?");
+            params.add(endDate);
         }
         sql.append(" ORDER BY la.start_date DESC, la.id DESC");
         return jdbc.query(sql.toString(), MAPPER, params.toArray());

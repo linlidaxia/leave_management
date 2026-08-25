@@ -400,11 +400,15 @@ public class LeaveController {
     public Object listApplications(
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Long deptId,
+            @RequestParam(required = false) Long employeeId,
+            @RequestParam(required = false) Long leaveTypeId,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Long identityId,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size) {
-        List<LeaveApplication> all = service.listApplications(year, deptId, status, identityId);
+        List<LeaveApplication> all = service.listApplications(year, deptId, employeeId, leaveTypeId, status, identityId, startDate, endDate);
         if (page != null && size != null && size > 0) {
             int total = all.size();
             int fromIndex = Math.min(page * size, total);
@@ -586,10 +590,11 @@ public class LeaveController {
     public Object listBalances(
             @RequestParam int year,
             @RequestParam(required = false) Long deptId,
+            @RequestParam(required = false) Long employeeId,
             @RequestParam(required = false) Long identityId,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size) {
-        java.util.List<AnnualLeaveBalance> all = service.listAnnualBalances(year, deptId, identityId);
+        java.util.List<AnnualLeaveBalance> all = service.listAnnualBalances(year, deptId, employeeId, identityId);
         if (page != null && size != null && size > 0) {
             int total = all.size();
             int fromIndex = Math.min(page * size, total);

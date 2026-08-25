@@ -32,10 +32,10 @@ public class AnnualLeaveBalanceRepository {
     }
 
     public List<AnnualLeaveBalance> findByYear(int year, Long deptId) {
-        return findByYear(year, deptId, null);
+        return findByYear(year, deptId, null, null);
     }
 
-    public List<AnnualLeaveBalance> findByYear(int year, Long deptId, Long identityId) {
+    public List<AnnualLeaveBalance> findByYear(int year, Long deptId, Long employeeId, Long identityId) {
         StringBuilder sql = new StringBuilder(
                 "SELECT alb.id, alb.employee_id, e.name AS emp_name, d.name AS dept_name, " +
                 "alb.year_val, alb.work_years, alb.total_days, alb.used_days, alb.remaining_days, alb.remark " +
@@ -49,6 +49,10 @@ public class AnnualLeaveBalanceRepository {
         if (deptId != null) {
             sql.append(" AND e.department_id=?");
             params.add(deptId);
+        }
+        if (employeeId != null) {
+            sql.append(" AND alb.employee_id=?");
+            params.add(employeeId);
         }
         if (identityId != null) {
             sql.append(" AND e.identity_id=?");

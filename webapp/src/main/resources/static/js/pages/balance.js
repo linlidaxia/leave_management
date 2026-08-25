@@ -2,14 +2,22 @@
 (function() {
     var isAdmin = false;
     var identities = [];
+    var departments = [];
+    var allEmployees = [];
     var pageSize = 15;
     var currentPage = 0;
 
     Auth.requireAuth().then(function(user) {
         if (!user) return;
         isAdmin = !Auth.isViewer();
-        return Api.get('/api/identities').then(function(list) {
-            identities = list || [];
+        return Promise.all([
+            Api.get('/api/identities'),
+            Api.get('/api/departments'),
+            Api.get('/api/employees')
+        ]).then(function(results) {
+            identities = results[0] || [];
+            departments = results[1] || [];
+            allEmployees = results[2] || [];
             return load(UI.currentYear());
         });
     }).catch(function(e) { console.error(e); });
@@ -20,9 +28,28 @@
         return opts.join('');
     }
 
+    function buildDeptOpts() {
+        var opts = ['<option value="">全部</option>'];
+        for (var i = 0; i < departments.length; i++) opts.push('<option value="' + departments[i].id + '">' + departments[i].name + '</option>');
+        return opts.join('');
+    }
+
+    function buildEmpOpts() {
+        var opts = ['<option value="">全部</option>'];
+        for (var i = 0; i < allEmployees.length; i++) opts.push('<option value="' + allEmployees[i].id + '">' + allEmployees[i].name + '</option>');
+        return opts.join('');
+    }
+
     function load(year) {
-        var identityId = document.getElementById('b_identity') ? document.getElementById('b_identity').value : '';
+        var prevDept = document.getElementById('b_dept') ? document.getElementById('b_dept').value : '';
+        var prevEmp = document.getElementById('b_emp') ? document.getElementById('b_emp').value : '';
+        var prevIdentity = document.getElementById('b_identity') ? document.getElementById('b_identity').value : '';
+        var deptId = prevDept;
+        var empId = prevEmp;
+        var identityId = prevIdentity;
         var params = 'year=' + year;
+        if (deptId) params += '&deptId=' + deptId;
+        if (empId) params += '&employeeId=' + empId;
         if (identityId) params += '&identityId=' + identityId;
         return Api.get('/api/annual-balances?' + params + '&page=' + currentPage + '&size=' + pageSize).then(function(resp) {
             var pageInfo = UI.parsePageData(resp);
@@ -36,6 +63,8 @@
             html += '<div class="page-tip">公休假规则: 工龄 &lt; 10 年 = 5 天 · 10~20 年 = 10 天 · ≥ 20 年 = 15 天</div>';
             html += '<div class="toolbar">' +
                 '<label>年度</label><input type="number" id="b_year" value="' + year + '" style="width:80px;">' +
+                '<label>部门</label><select id="b_dept">' + buildDeptOpts() + '</select>' +
+                '<label>人员</label><select id="b_emp">' + buildEmpOpts() + '</select>' +
                 '<label>身份</label><select id="b_identity">' + buildIdentityOpts() + '</select>' +
                 '<button class="btn btn-primary" onclick="balanceQuery()">查询</button>' +
                 (isAdmin ? '<button class="btn btn-gold" onclick="balanceInit()">初始化额度</button>' : '') +
@@ -52,8 +81,12 @@
             // 恢复筛选条件
             var sy = document.getElementById('b_year');
             if (sy) sy.value = year;
+            var sd = document.getElementById('b_dept');
+            if (sd) sd.value = prevDept;
+            var se = document.getElementById('b_emp');
+            if (se) se.value = prevEmp;
             var si = document.getElementById('b_identity');
-            if (si) si.value = identityId;
+            if (si) si.value = prevIdentity;
         });
     }
     window.load = load;
