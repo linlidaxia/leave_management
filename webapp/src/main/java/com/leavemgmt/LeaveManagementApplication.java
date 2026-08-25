@@ -5,12 +5,14 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * 行政事业单位请销假管理系统 v2.0 (Web Edition)
  * Spring Boot + SQLite 单文件应用
  */
 @SpringBootApplication
+@EnableScheduling
 public class LeaveManagementApplication {
 
     public static void main(String[] args) {
