@@ -63,7 +63,7 @@
             html += '<div class="page-tip">公休假规则: 工龄 &lt; 10 年 = 5 天 · 10~20 年 = 10 天 · ≥ 20 年 = 15 天</div>';
             html += '<div class="toolbar">' +
                 '<label>年度</label><input type="number" id="b_year" value="' + year + '" style="width:80px;">' +
-                '<label>部门</label><select id="b_dept">' + buildDeptOpts() + '</select>' +
+                '<label>部门</label><select id="b_dept" onchange="onBalanceDeptChange()">' + buildDeptOpts() + '</select>' +
                 '<label>人员</label><select id="b_emp">' + buildEmpOpts() + '</select>' +
                 '<label>身份</label><select id="b_identity">' + buildIdentityOpts() + '</select>' +
                 '<button class="btn btn-primary" onclick="balanceQuery()">查询</button>' +
@@ -92,6 +92,12 @@
     window.load = load;
 
     window.balanceChangePage = function(p) { currentPage = p; load(document.getElementById('b_year').value); };
+
+    window.onBalanceDeptChange = function() {
+        var deptId = document.getElementById('b_dept').value;
+        var empSel = document.getElementById('b_emp');
+        if (empSel) empSel.innerHTML = buildEmpOpts(deptId);
+    };
 
     window.balanceQuery = function() {
         var y = parseInt(document.getElementById('b_year').value);
