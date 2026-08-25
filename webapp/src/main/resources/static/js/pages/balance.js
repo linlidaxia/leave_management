@@ -34,9 +34,12 @@
         return opts.join('');
     }
 
-    function buildEmpOpts() {
+    function buildEmpOpts(deptId) {
         var opts = ['<option value="">全部</option>'];
-        for (var i = 0; i < allEmployees.length; i++) opts.push('<option value="' + allEmployees[i].id + '">' + allEmployees[i].name + '</option>');
+        for (var i = 0; i < allEmployees.length; i++) {
+            if (deptId && allEmployees[i].departmentId !== parseInt(deptId)) continue;
+            opts.push('<option value="' + allEmployees[i].id + '">' + allEmployees[i].name + '</option>');
+        }
         return opts.join('');
     }
 
@@ -64,7 +67,7 @@
             html += '<div class="toolbar">' +
                 '<label>年度</label><input type="number" id="b_year" value="' + year + '" style="width:80px;">' +
                 '<label>部门</label><select id="b_dept" onchange="onBalanceDeptChange()">' + buildDeptOpts() + '</select>' +
-                '<label>人员</label><select id="b_emp">' + buildEmpOpts() + '</select>' +
+                '<label>人员</label><select id="b_emp">' + buildEmpOpts(deptId) + '</select>' +
                 '<label>身份</label><select id="b_identity">' + buildIdentityOpts() + '</select>' +
                 '<button class="btn btn-primary" onclick="balanceQuery()">查询</button>' +
                 (isAdmin ? '<button class="btn btn-gold" onclick="balanceInit()">初始化额度</button>' : '') +
