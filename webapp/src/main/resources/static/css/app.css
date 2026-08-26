@@ -531,6 +531,16 @@ a:hover { color: var(--gold-dark); }
     transition: border-color 0.15s ease;
 }
 .stat-card:hover { border-color: var(--border-strong); }
+.stat-link {
+    text-decoration: none;
+    cursor: pointer;
+    display: block;
+}
+.stat-link:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    border-color: var(--gold);
+}
 .stat-card .stat-num {
     font-family: Courier New, monospace;
     font-size: 28px;
