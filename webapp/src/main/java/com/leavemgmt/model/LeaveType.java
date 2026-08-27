@@ -6,6 +6,7 @@ public class LeaveType {
     private String code;
     private Integer sortOrder;
     private Boolean needAttachment;   // 是否需要佐证附件
+    private Boolean deductFromAnnual; // 是否优先扣除公休假
     private String remark;
 
     public LeaveType() {}
@@ -20,6 +21,8 @@ public class LeaveType {
     public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
     public Boolean getNeedAttachment() { return needAttachment; }
     public void setNeedAttachment(Boolean needAttachment) { this.needAttachment = needAttachment; }
+    public Boolean getDeductFromAnnual() { return deductFromAnnual; }
+    public void setDeductFromAnnual(Boolean deductFromAnnual) { this.deductFromAnnual = deductFromAnnual; }
     public String getRemark() { return remark; }
     public void setRemark(String remark) { this.remark = remark; }
 }

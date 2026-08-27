@@ -281,7 +281,7 @@ public class LeaveService {
     }
 
     /**
-     * 检查事假抵扣公休假的预览信息
+     * 检查公休假抵扣的预览信息
      * 返回: { days, offsetAnnual, remaining, message, leaveCategory, annualTotal, annualUsed }
      */
     public Map<String, Object> previewApplication(Long empId, Long leaveTypeId,
@@ -294,7 +294,7 @@ public class LeaveService {
         r.put("leaveTypeName", lt == null ? "" : lt.getName());
         double offset = 0;
         String msg = "";
-        String category = "other";  // other / annual / personal
+        String category = "other";  // other / annual / deductFromAnnual
 
         int year = start.getYear();
         AnnualLeaveBalance bal = balRepo.findByEmpYear(empId, year);
@@ -315,14 +315,20 @@ public class LeaveService {
                 msg = String.format("公休假剩余 %.1f 天, 本次申请 %.1f 天, 申请后剩余 %.1f 天",
                         annualRemaining, days, annualRemaining - days);
             }
-        } else if (lt != null && LeaveCalculator.isPersonalLeave(lt.getName())) {
-            // 事假: 自动抵扣公休假
-            category = "personal";
-            offset = Math.min(days, annualRemaining);
+        } else if (lt != null && LeaveCalculator.isDeductFromAnnual(lt)) {
+            // 优先扣除公休的假别: 从公休假额度扣除
+            category = "deductFromAnnual";
+            offset = LeaveCalculator.calculateAnnualDeduction(days, annualRemaining);
             if (offset > 0) {
-                msg = String.format("事假将抵扣公休假 %.1f 天 (公休假剩余 %.1f 天)", offset, annualRemaining);
+                if (offset < days) {
+                    msg = String.format("本次申请 %.1f 天, 将从公休假扣除 %.1f 天 (公休假剩余 %.1f 天), 剩余 %.1f 天计入%s",
+                            days, offset, annualRemaining, days - offset, lt.getName());
+                } else {
+                    msg = String.format("本次申请 %.1f 天将全部从公休假扣除, 申请后公休假剩余 %.1f 天",
+                            days, annualRemaining - offset);
+                }
             } else {
-                msg = "公休假已无余额, 不抵扣";
+                msg = "公休假已无余额, 本次请假将全部计入" + (lt.getName() == null ? "该假别" : lt.getName());
             }
         }
         r.put("leaveCategory", category);
@@ -336,7 +342,7 @@ public class LeaveService {
     }
 
     /**
-     * 新建请假申请 (含事假自动抵扣公休假 / 公休假额度校验)
+     * 新建请假申请 (含公休假额度校验 / 优先扣除公休逻辑)
      */
     @Transactional
     public Long submitApplication(Long empId, Long leaveTypeId,
@@ -371,11 +377,12 @@ public class LeaveService {
             }
         }
 
-        // 事假抵扣公休假
+        // 计算从公休假扣除的天数
         double offsetAnnual = 0;
-        if (lt != null && LeaveCalculator.isPersonalLeave(lt.getName())) {
+        if (lt != null && LeaveCalculator.isDeductFromAnnual(lt)) {
+            // 优先扣除公休的假别: 从公休假额度扣除
             double remaining = balRepo.getRemaining(empId, year);
-            offsetAnnual = Math.min(days, remaining);
+            offsetAnnual = LeaveCalculator.calculateAnnualDeduction(days, remaining);
         }
 
         LeaveApplication a = new LeaveApplication();
@@ -392,14 +399,12 @@ public class LeaveService {
 
         Long id = appRepo.insert(a);
 
-        // 抵扣公休假余额:
-        // - 事假场景: 抵扣事假天数 (offsetAnnual 已计算)
-        // - 公休假场景: 抵扣公休假天数 (days)
+        // 扣减公休假余额:
         if (lt != null && LeaveCalculator.isAnnualLeave(lt.getName())) {
             // 公休假: 直接扣减本次天数
             balRepo.addUsed(empId, year, days);
         } else if (offsetAnnual > 0) {
-            // 事假: 抵扣 offsetAnnual 天
+            // 优先扣除公休的假别: 抵扣 offsetAnnual 天
             balRepo.addUsed(empId, year, offsetAnnual);
         }
         return id;
@@ -446,7 +451,7 @@ public class LeaveService {
     }
 
     /**
-     * 删除请假申请 (恢复事假抵扣的天数 / 公休假已用天数, 同时级联删除销假记录和附件)
+     * 删除请假申请 (恢复公休假已用天数, 同时级联删除销假记录和附件)
      */
     @Transactional
     public void deleteApplication(Long appId) {
@@ -454,7 +459,7 @@ public class LeaveService {
         if (a == null) return;
         LeaveType lt = ltRepo.findById(a.getLeaveTypeId());
         int year = a.getStartDate().getYear();
-        // 恢复事假抵扣的天数
+        // 恢复公休假抵扣的天数 (优先扣除公休的假别)
         if (a.getOffsetAnnual() != null && a.getOffsetAnnual() > 0) {
             balRepo.subtractUsed(a.getEmployeeId(), year, a.getOffsetAnnual());
         }
@@ -505,7 +510,13 @@ public class LeaveService {
     public List<LeaveApplication> listPendingCancellationsFiltered(
             Long deptId, Long employeeId, Long leaveTypeId,
             String startDate, String endDate, Long identityId) {
-        return appRepo.findPendingCancellationsFiltered(deptId, employeeId, leaveTypeId, startDate, endDate, identityId);
+        return listPendingCancellationsFiltered(deptId, employeeId, leaveTypeId, startDate, endDate, identityId, null);
+    }
+
+    public List<LeaveApplication> listPendingCancellationsFiltered(
+            Long deptId, Long employeeId, Long leaveTypeId,
+            String startDate, String endDate, Long identityId, Integer year) {
+        return appRepo.findPendingCancellationsFiltered(deptId, employeeId, leaveTypeId, startDate, endDate, identityId, year);
     }
 
     public List<LeaveCancellation> listCancellations() {
@@ -534,7 +545,7 @@ public class LeaveService {
      * 初始化年度公休假额度:
      * 1. 删除该年度旧数据
      * 2. 按员工工龄计算额度
-     * 3. 重放本年度已存在的请假记录 (事假抵扣 + 公休假请假)
+     * 3. 重放本年度已存在的请假记录 (公休假请假 + 优先扣除公休的假别)
      */
     @Transactional
     public int initAnnualBalance(int year) {
@@ -554,8 +565,8 @@ public class LeaveService {
             if (LeaveCalculator.isAnnualLeave(lt.getName()) && a.getDays() != null && a.getDays() > 0) {
                 balRepo.addUsed(a.getEmployeeId(), year, a.getDays());
             }
-            // 事假抵扣
-            else if (LeaveCalculator.isPersonalLeave(lt.getName()) &&
+            // 优先扣除公休的假别: 抵扣 offsetAnnual 天
+            else if (LeaveCalculator.isDeductFromAnnual(lt) &&
                      a.getOffsetAnnual() != null && a.getOffsetAnnual() > 0) {
                 balRepo.addUsed(a.getEmployeeId(), year, a.getOffsetAnnual());
             }

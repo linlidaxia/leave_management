@@ -40,11 +40,18 @@ var TabManager = {
 
     open: function(id, title, url) {
         this._init();
-        // 已存在则切换 (并刷新 iframe 以获取最新数据)
+        // 已存在则切换 (如果URL不同则更新)
         for (var i = 0; i < this.tabs.length; i++) {
             if (this.tabs[i].id === id) {
                 var frame = document.querySelector('#tabFrameWrap iframe[data-tab="' + id + '"]');
-                if (frame) frame.src = frame.src;
+                if (frame && frame.src && url) {
+                    var oldPath = frame.src.split('?')[0].split('#')[0];
+                    var newPath = url.split('?')[0].split('#')[0];
+                    if (oldPath !== newPath || frame.src !== url) {
+                        frame.src = url;
+                        this.tabs[i].url = url;
+                    }
+                }
                 this.switchTo(id);
                 return;
             }

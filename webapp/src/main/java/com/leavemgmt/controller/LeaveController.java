@@ -539,16 +539,17 @@ public class LeaveController {
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
             @RequestParam(required = false) Long identityId,
+            @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size) {
         java.util.List<LeaveApplication> all;
         if (deptId == null && employeeId == null && leaveTypeId == null
-                && identityId == null
+                && identityId == null && year == null
                 && (startDate == null || startDate.isBlank())
                 && (endDate == null || endDate.isBlank())) {
             all = service.listPendingCancellations();
         } else {
-            all = service.listPendingCancellationsFiltered(deptId, employeeId, leaveTypeId, startDate, endDate, identityId);
+            all = service.listPendingCancellationsFiltered(deptId, employeeId, leaveTypeId, startDate, endDate, identityId, year);
         }
         if (page != null && size != null && size > 0) {
             int total = all.size();

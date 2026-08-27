@@ -182,6 +182,12 @@ public class LeaveApplicationRepository {
     public List<LeaveApplication> findPendingCancellationsFiltered(
             Long deptId, Long employeeId, Long leaveTypeId,
             String startDate, String endDate, Long identityId) {
+        return findPendingCancellationsFiltered(deptId, employeeId, leaveTypeId, startDate, endDate, identityId, null);
+    }
+
+    public List<LeaveApplication> findPendingCancellationsFiltered(
+            Long deptId, Long employeeId, Long leaveTypeId,
+            String startDate, String endDate, Long identityId, Integer year) {
         StringBuilder sql = new StringBuilder(
                 "SELECT " + SELECT_COLS +
                 "FROM leave_applications la " +
@@ -191,6 +197,10 @@ public class LeaveApplicationRepository {
                 "LEFT JOIN employee_identities ei ON e.identity_id = ei.id " +
                 "WHERE la.status='已审批' AND la.id NOT IN (SELECT application_id FROM leave_cancellations)");
         List<Object> params = new ArrayList<>();
+        if (year != null) {
+            sql.append(" AND CAST(strftime('%Y', la.start_date) AS INTEGER)=?");
+            params.add(year);
+        }
         if (deptId != null) {
             sql.append(" AND e.department_id=?");
             params.add(deptId);

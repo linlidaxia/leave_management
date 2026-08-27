@@ -21,7 +21,11 @@
         lts = results[1];
         emps = results[2];
         identities = results[3] || [];
-        return load();
+        // 从 URL 参数读取初始筛选条件
+        var params = new URLSearchParams(window.location.search);
+        var initDeptId = params.get('deptId') || '';
+        var initYear = params.get('year') || '';
+        return load(initDeptId, initYear);
     }).catch(function(e) { console.error(e); });
 
     function buildDeptOpts() {
@@ -54,15 +58,20 @@
     var pageSize = 15;
     var currentPage = 0;
 
-    function load() {
+    function load(initDeptId, initYear) {
+        var cYear = document.getElementById('c_year') ? document.getElementById('c_year').value : '';
         var deptId = document.getElementById('c_dept') ? document.getElementById('c_dept').value : '';
         var empId = document.getElementById('c_emp') ? document.getElementById('c_emp').value : '';
         var ltId = document.getElementById('c_lt') ? document.getElementById('c_lt').value : '';
         var identityId = document.getElementById('c_identity') ? document.getElementById('c_identity').value : '';
         var sd = document.getElementById('c_sd') ? document.getElementById('c_sd').value : '';
         var ed = document.getElementById('c_ed') ? document.getElementById('c_ed').value : '';
+        // 首次加载时从参数应用筛选
+        if (initDeptId && !deptId) deptId = initDeptId;
+        if (initYear && !cYear) cYear = initYear;
 
         var params = [];
+        if (cYear) params.push('year=' + cYear);
         if (deptId) params.push('deptId=' + deptId);
         if (empId) params.push('employeeId=' + empId);
         if (ltId) params.push('leaveTypeId=' + ltId);
@@ -80,7 +89,14 @@
             var pageInfo = UI.parsePageData(results[0]);
             var pending = pageInfo.rows;
             var cancelledInfo = UI.parsePageData(results[1]);
-            var cancelled = cancelledInfo.rows;
+            var cancelledAll = cancelledInfo.rows;
+
+            // 已销假按年度筛选
+            var cancelled = [];
+            for (var j = 0; j < cancelledAll.length; j++) {
+                if (cYear && cancelledAll[j].startDate && cancelledAll[j].startDate.indexOf(String(cYear)) !== 0) continue;
+                cancelled.push(cancelledAll[j]);
+            }
 
             var html = '<div class="page-header"><div><div class="page-title">销假管理</div><div class="page-subtitle">Leave Cancellation</div></div></div>';
             html += '<div class="page-tip">提示: 点击待销假记录的「销假」按钮进行销假登记</div>';
@@ -88,6 +104,7 @@
             // 查询条件区 (max-width 限制卡片宽度, 紧凑布局)
             html += '<div class="card" style="padding:8px 12px;">';
             html += '<div class="form-row" style="gap:6px;flex-wrap:wrap;">';
+            html += '<div class="form-group" style="width:80px;flex-shrink:0;"><label>年度</label><input type="number" id="c_year" value="' + (cYear || new Date().getFullYear()) + '"></div>';
             html += '<div class="form-group" style="width:120px;flex-shrink:0;"><label>部门</label><select id="c_dept" onchange="onCancelDeptChange()">' + buildDeptOpts() + '</select></div>';
             html += '<div class="form-group" style="width:120px;flex-shrink:0;"><label>人员</label><select id="c_emp">' + buildEmpOpts(deptId) + '</select></div>';
             html += '<div class="form-group" style="width:100px;flex-shrink:0;"><label>假别</label><select id="c_lt">' + buildLtOpts() + '</select></div>';
@@ -108,13 +125,14 @@
                 var a = pending[i];
                 pRows.push([a.id, a.employeeName, a.departmentName||'—', a.leaveTypeName, UI.fmtDate(a.startDate), UI.fmtDate(a.endDate), UI.fmtNum(a.days,1), UI.statusTag(a.status), a]);
             }
+            html += '<div id="cancel_pending_wrap">';
             html += UI.table(['ID', '姓名', '部门', '假别', '开始', '结束', '天数', '状态', '操作'],
                 pRows, [null,null,null,null,null,null,null,null, function(val, row) {
                     var a = row[8];
                     if (!isAdmin) return '<span class="text-muted">只读</span>';
                     return '<button class="btn btn-sm btn-success" onclick="cancelRegister(' + a.id + ')">销假</button>';
                 }]);
-            html += '</div>';
+            html += '</div></div>';
 
             // 已销假列表
             html += '<div class="card"><h3>已销假记录 (' + cancelled.length + ')</h3>';
@@ -127,9 +145,11 @@
             html += '</div>';
 
             document.getElementById('contentArea').innerHTML = html;
-            var tw = document.querySelector('#contentArea .card:first-child .table-wrap');
+            var tw = document.querySelector('#cancel_pending_wrap .table-wrap');
             if (tw) tw.insertAdjacentHTML('afterend', UI.pagination(pageInfo.total, currentPage, pageSize, 'cancelChangePage'));
             // 恢复筛选条件
+            var sdYear = document.getElementById('c_year');
+            if (sdYear) sdYear.value = cYear;
             var sdDept = document.getElementById('c_dept');
             if (sdDept) sdDept.value = deptId;
             if (deptId) { var sdEmp = document.getElementById('c_emp'); if (sdEmp) sdEmp.innerHTML = buildEmpOpts(deptId); }
@@ -156,6 +176,7 @@
     };
 
     window.cancelReset = function() {
+        document.getElementById('c_year').value = new Date().getFullYear();
         document.getElementById('c_dept').value = '';
         document.getElementById('c_emp').value = '';
         document.getElementById('c_lt').value = '';

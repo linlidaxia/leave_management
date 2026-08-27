@@ -65,31 +65,109 @@ public class ExcelExportService {
     }
 
     public byte[] exportStatistics(int year, List<Map<String, Object>> rows) throws IOException {
+        // Collect leave types in order
+        java.util.LinkedHashSet<String> ltSet = new java.util.LinkedHashSet<>();
+        for (Map<String, Object> r : rows) ltSet.add(asStr(r.get("leave_type")));
+        java.util.List<String> ltList = new java.util.ArrayList<>(ltSet);
+
+        // Pivot: key = empId_empName_deptName
+        java.util.LinkedHashMap<String, Object[]> empMap = new java.util.LinkedHashMap<>();
+        java.util.List<String> empOrder = new java.util.ArrayList<>();
+        for (Map<String, Object> r : rows) {
+            String key = r.get("emp_id") + "_" + asStr(r.get("emp_name")) + "_" + asStr(r.get("dept_name"));
+            if (!empMap.containsKey(key)) {
+                empMap.put(key, new Object[]{asStr(r.get("emp_name")), asStr(r.get("dept_name")), new java.util.HashMap<String, double[]>(){{
+                    for (String lt : ltList) put(lt, new double[]{0, 0});
+                }}});
+                empOrder.add(key);
+            }
+            String lt = asStr(r.get("leave_type"));
+            double[] vals = ((java.util.Map<String, double[]>) empMap.get(key)[2]).get(lt);
+            vals[0] += asDouble(r.get("total_days"));
+            vals[1] += asLong(r.get("cnt"));
+        }
+
         try (Workbook wb = new XSSFWorkbook();
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet ws = wb.createSheet(year + "年统计");
-            ws.addMergedRegion(new CellRangeAddress(0, 0, 0, 4));
+
+            // Title row
+            int totalCols = 2 + ltList.size() * 2 + 1;
+            ws.addMergedRegion(new CellRangeAddress(0, 0, 0, totalCols - 1));
             Cell title = ws.createRow(0).createCell(0);
             title.setCellValue(year + "年度请假统计表");
             title.setCellStyle(titleStyle(wb));
 
-            String[] headers = {"姓名", "部门", "假别", "总天数", "次数"};
-            Row hr = ws.createRow(1);
-            for (int i = 0; i < headers.length; i++) {
-                Cell c = hr.createCell(i);
-                c.setCellValue(headers[i]);
-                c.setCellStyle(headStyle(wb));
+            // Row 1: header row 1
+            Row hr1 = ws.createRow(1);
+            Cell c0 = hr1.createCell(0);
+            c0.setCellValue("姓名");
+            c0.setCellStyle(headStyle(wb));
+            ws.addMergedRegion(new CellRangeAddress(1, 2, 0, 0));
+
+            Cell c1 = hr1.createCell(1);
+            c1.setCellValue("部门");
+            c1.setCellStyle(headStyle(wb));
+            ws.addMergedRegion(new CellRangeAddress(1, 2, 1, 1));
+
+            int col = 2;
+            for (String lt : ltList) {
+                Cell clt = hr1.createCell(col);
+                clt.setCellValue(lt);
+                clt.setCellStyle(headStyle(wb));
+                ws.addMergedRegion(new CellRangeAddress(1, 1, col, col + 1));
+                col += 2;
             }
-            int r = 2;
-            for (Map<String, Object> row : rows) {
+
+            Cell cTotal = hr1.createCell(col);
+            cTotal.setCellValue("合计天数");
+            cTotal.setCellStyle(headStyle(wb));
+            ws.addMergedRegion(new CellRangeAddress(1, 2, col, col));
+
+            // Row 2: sub header
+            Row hr2 = ws.createRow(2);
+            // name/dept cells are merged from row1, leave empty
+            col = 2;
+            for (int i = 0; i < ltList.size(); i++) {
+                Cell cCnt = hr2.createCell(col);
+                cCnt.setCellValue("次数");
+                cCnt.setCellStyle(headStyle(wb));
+                Cell cDays = hr2.createCell(col + 1);
+                cDays.setCellValue("天数");
+                cDays.setCellStyle(headStyle(wb));
+                col += 2;
+            }
+
+            // Data rows
+            int r = 3;
+            for (String empKey : empOrder) {
+                Object[] empData = empMap.get(empKey);
+                @SuppressWarnings("unchecked")
+                java.util.Map<String, double[]> ltData = (java.util.Map<String, double[]>) empData[2];
                 Row x = ws.createRow(r++);
-                setCell(x, 0, asStr(row.get("emp_name")), wb);
-                setCell(x, 1, asStr(row.get("dept_name")), wb);
-                setCell(x, 2, asStr(row.get("leave_type")), wb);
-                setCell(x, 3, asDouble(row.get("total_days")), wb);
-                setCell(x, 4, asLong(row.get("cnt")), wb);
+                setCell(x, 0, empData[0], wb); // name
+                setCell(x, 1, empData[1], wb); // dept
+                int c = 2;
+                double totalDays = 0;
+                for (String lt : ltList) {
+                    double[] vals = ltData.get(lt);
+                    setCell(x, c, vals[1] > 0 ? vals[1] : "", wb);
+                    setCell(x, c + 1, vals[0] > 0 ? vals[0] : "", wb);
+                    totalDays += vals[0];
+                    c += 2;
+                }
+                setCell(x, c, totalDays, wb);
             }
-            for (int i = 0; i < 5; i++) ws.setColumnWidth(i, 15 * 512);
+
+            // Column widths
+            ws.setColumnWidth(0, 12 * 512);
+            ws.setColumnWidth(1, 16 * 512);
+            for (int i = 0; i < ltList.size(); i++) {
+                ws.setColumnWidth(2 + i * 2, 8 * 512);
+                ws.setColumnWidth(3 + i * 2, 10 * 512);
+            }
+            ws.setColumnWidth(totalCols - 1, 12 * 512);
+
             wb.write(out);
             return out.toByteArray();
         }
@@ -172,32 +250,98 @@ public class ExcelExportService {
     }
 
     public byte[] exportSummary(int year, List<Map<String, Object>> rows) throws IOException {
+        // Collect leave types in order
+        java.util.LinkedHashSet<String> ltSet = new java.util.LinkedHashSet<>();
+        for (Map<String, Object> r : rows) ltSet.add(asStr(r.get("leave_type")));
+        java.util.List<String> ltList = new java.util.ArrayList<>(ltSet);
+
+        // Pivot: key = deptName
+        java.util.LinkedHashMap<String, Object[]> deptMap = new java.util.LinkedHashMap<>();
+        java.util.List<String> deptOrder = new java.util.ArrayList<>();
+        for (Map<String, Object> r : rows) {
+            String dept = r.get("dept_name") == null ? "(未分配)" : asStr(r.get("dept_name"));
+            if (!deptMap.containsKey(dept)) {
+                deptMap.put(dept, new Object[]{new java.util.HashMap<String, double[]>(){{
+                    for (String lt : ltList) put(lt, new double[]{0, 0});
+                }}});
+                deptOrder.add(dept);
+            }
+            String lt = asStr(r.get("leave_type"));
+            double[] vals = ((java.util.Map<String, double[]>) deptMap.get(dept)[0]).get(lt);
+            vals[0] += asDouble(r.get("total_days"));
+            vals[1] += asLong(r.get("cnt"));
+        }
+
         try (Workbook wb = new XSSFWorkbook();
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Sheet ws = wb.createSheet(year + "年汇总");
-            ws.addMergedRegion(new CellRangeAddress(0, 0, 0, 3));
+
+            int totalCols = 1 + ltList.size() * 2 + 1;
+            ws.addMergedRegion(new CellRangeAddress(0, 0, 0, totalCols - 1));
             Cell title = ws.createRow(0).createCell(0);
             title.setCellValue(year + "年度请假汇总表");
             title.setCellStyle(titleStyle(wb));
 
-            String[] headers = {"部门", "假别", "总天数", "人次"};
-            Row hr = ws.createRow(1);
-            for (int i = 0; i < headers.length; i++) {
-                Cell c = hr.createCell(i);
-                c.setCellValue(headers[i]);
-                c.setCellStyle(headStyle(wb));
+            // Row 1
+            Row hr1 = ws.createRow(1);
+            Cell c0 = hr1.createCell(0);
+            c0.setCellValue("部门");
+            c0.setCellStyle(headStyle(wb));
+            ws.addMergedRegion(new CellRangeAddress(1, 2, 0, 0));
+
+            int col = 1;
+            for (String lt : ltList) {
+                Cell clt = hr1.createCell(col);
+                clt.setCellValue(lt);
+                clt.setCellStyle(headStyle(wb));
+                ws.addMergedRegion(new CellRangeAddress(1, 1, col, col + 1));
+                col += 2;
             }
-            int r = 2;
-            for (Map<String, Object> row : rows) {
+
+            Cell cTotal = hr1.createCell(col);
+            cTotal.setCellValue("合计天数");
+            cTotal.setCellStyle(headStyle(wb));
+            ws.addMergedRegion(new CellRangeAddress(1, 2, col, col));
+
+            // Row 2
+            Row hr2 = ws.createRow(2);
+            col = 1;
+            for (int i = 0; i < ltList.size(); i++) {
+                Cell cCnt = hr2.createCell(col);
+                cCnt.setCellValue("人次");
+                cCnt.setCellStyle(headStyle(wb));
+                Cell cDays = hr2.createCell(col + 1);
+                cDays.setCellValue("天数");
+                cDays.setCellStyle(headStyle(wb));
+                col += 2;
+            }
+
+            // Data rows
+            int r = 3;
+            for (String deptKey : deptOrder) {
+                @SuppressWarnings("unchecked")
+                java.util.Map<String, double[]> ltData = (java.util.Map<String, double[]>) deptMap.get(deptKey)[0];
                 Row x = ws.createRow(r++);
-                Object dept = row.get("dept_name");
-                setCell(x, 0, dept == null ? "(未分配)" : asStr(dept), wb);
-                setCell(x, 1, asStr(row.get("leave_type")), wb);
-                setCell(x, 2, asDouble(row.get("total_days")), wb);
-                setCell(x, 3, asLong(row.get("cnt")), wb);
+                setCell(x, 0, deptKey, wb);
+                int c = 1;
+                double totalDays = 0;
+                for (String lt : ltList) {
+                    double[] vals = ltData.get(lt);
+                    setCell(x, c, vals[1] > 0 ? vals[1] : "", wb);
+                    setCell(x, c + 1, vals[0] > 0 ? vals[0] : "", wb);
+                    totalDays += vals[0];
+                    c += 2;
+                }
+                setCell(x, c, totalDays, wb);
             }
-            int[] widths = {20, 15, 12, 10};
-            for (int i = 0; i < widths.length; i++) ws.setColumnWidth(i, widths[i] * 512);
+
+            ws.setColumnWidth(0, 20 * 512);
+            for (int i = 0; i < ltList.size(); i++) {
+                ws.setColumnWidth(1 + i * 2, 8 * 512);
+                ws.setColumnWidth(2 + i * 2, 10 * 512);
+            }
+            ws.setColumnWidth(totalCols - 1, 12 * 512);
+
             wb.write(out);
             return out.toByteArray();
         }

@@ -69,7 +69,7 @@
         var today = UI.today();
         var html = '';
         html += '<div class="page-header"><div><div class="page-title">请假登记</div><div class="page-subtitle">New Leave Application</div></div></div>';
-        html += '<div class="page-tip">提示: 请先选择部门再选人员；选择事假时自动抵扣公休假, 半天按 0.5 天计算；标注「需佐证」的假别在表单内直接上传附件 (PDF/图片) ; 提交后可在 <a href="/leave-list.html" style="color:var(--gold-dark);font-weight:600;">请假记录</a> 中查看/补充附件</div>';
+        html += '<div class="page-tip">提示: 请先选择部门再选人员；标注「优先扣除公休」的假别将优先从公休假额度扣除，额度用完后仍可请假；标注「需佐证」的假别在表单内直接上传附件 (PDF/图片) ; 提交后可在 <a href="/leave-list.html" style="color:var(--gold-dark);font-weight:600;">请假记录</a> 中查看/补充附件</div>';
 
         html += '<div class="card" >' +
             '<div class="form-row" style="flex-wrap:wrap;">' +

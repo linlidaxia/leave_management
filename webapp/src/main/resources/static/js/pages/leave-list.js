@@ -23,7 +23,12 @@
         lts = results[1];
         emps = results[2];
         identities = results[3] || [];
-        return load();
+        // 从 URL 参数读取初始筛选条件
+        var urlParams = new URLSearchParams(window.location.search);
+        var initStatus = urlParams.get('status') || '';
+        var initDeptId = urlParams.get('deptId') || '';
+        var initYear = urlParams.get('year') || '';
+        return load(initStatus, initDeptId, initYear);
     }).catch(function(e) { console.error(e); });
 
     function buildDeptOpts() {
@@ -57,7 +62,7 @@
         return '<option value="">全部</option><option value="待审批">待审批</option><option value="已审批">已审批</option><option value="已销假">已销假</option>';
     }
 
-    function load() {
+    function load(initStatus, initDeptId, initYear) {
         var year = document.getElementById('ll_year') ? document.getElementById('ll_year').value : '';
         var deptId = document.getElementById('ll_dept') ? document.getElementById('ll_dept').value : '';
         var empId = document.getElementById('ll_emp') ? document.getElementById('ll_emp').value : '';
@@ -66,6 +71,10 @@
         var status = document.getElementById('ll_status') ? document.getElementById('ll_status').value : '';
         var sd = document.getElementById('ll_sd') ? document.getElementById('ll_sd').value : '';
         var ed = document.getElementById('ll_ed') ? document.getElementById('ll_ed').value : '';
+        // 首次加载时从参数应用筛选
+        if (initStatus && !status) status = initStatus;
+        if (initDeptId && !deptId) deptId = initDeptId;
+        if (initYear && !year) year = initYear;
 
         var params = [];
         if (year) params.push('year=' + year);

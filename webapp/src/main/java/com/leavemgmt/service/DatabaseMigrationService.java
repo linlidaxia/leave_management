@@ -55,8 +55,11 @@ public class DatabaseMigrationService {
         MIGRATIONS.add(new Migration(3, "确保 identity_id 列存在",
                 "-- 跳过, 由 Java 代码检测处理"));
 
-        // v4: ... 未来扩展
-        // MIGRATIONS.add(new Migration(4, "描述", "SQL语句"));
+        // v4: 假别表增加"优先扣除公休"字段
+        MIGRATIONS.add(new Migration(4, "假别增加优先扣除公休字段",
+                "ALTER TABLE leave_types ADD COLUMN deduct_from_annual INTEGER DEFAULT 0" +
+                ";;" +
+                "UPDATE leave_types SET deduct_from_annual = 1 WHERE name LIKE '%事假%'"));
     }
 
     /**
@@ -140,6 +143,13 @@ public class DatabaseMigrationService {
                 if (trimmed.isEmpty() || trimmed.startsWith("--")) continue;
                 try (Statement stmt = conn.createStatement()) {
                     stmt.execute(trimmed);
+                } catch (Exception e) {
+                    String msg = e.getMessage() == null ? "" : e.getMessage().toLowerCase();
+                    if (msg.contains("duplicate column")) {
+                        log.info("列已存在，跳过: {}", trimmed.substring(0, Math.min(60, trimmed.length())));
+                        continue;
+                    }
+                    throw e;
                 }
             }
         } catch (Exception e) {

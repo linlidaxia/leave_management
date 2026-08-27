@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS leave_types (
     code            TEXT NOT NULL,
     sort_order       INTEGER DEFAULT 0,
     need_attachment  INTEGER DEFAULT 0,   -- 0: 不需要佐证, 1: 需要佐证
+    deduct_from_annual INTEGER DEFAULT 0, -- 0: 不优先扣除公休, 1: 优先扣除公休
     remark          TEXT
 );
 

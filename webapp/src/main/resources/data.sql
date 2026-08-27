@@ -6,18 +6,18 @@
 -- SQLite 不支持 IF NOT EXISTS 加列, 用异常捕获方式: 先查 PRAGMA, 代码层处理
 -- 这里直接尝试加列, 已存在会报错但被 continue-on-error 忽略
 ALTER TABLE leave_types ADD COLUMN need_attachment INTEGER DEFAULT 0;
-
+ALTER TABLE leave_types ADD COLUMN deduct_from_annual INTEGER DEFAULT 0;
 
 -- ---- 假别 (共 8 条, 与原 Access 数据完全一致) ----
-INSERT OR IGNORE INTO leave_types (id, name, code, sort_order, remark) VALUES
-    (1, '公休假',     'GXJ',  1,   '按工龄核定：工龄<10年5天，10-20年10天，20年以上15天'),
-    (2, '事假',       'SHIJ', 2,   '事假可抵扣公休假'),
-    (3, '病假',       'BINJ', 3,   '需提供医院证明'),
-    (4, '婚丧假',     'HSJ',  4,   '婚假25天，丧假3天（直系亲属）'),
-    (5, '男方陪护假', 'PHJ',  5,   '男方护理假，一般15天'),
-    (6, '调休',       'TXJ',  6,   '调休假'),
-    (7, '其他',       'QIT',  99,  '其他假别'),
-    (8, '产假',       'CJ',   999, '需提供医院证明');
+INSERT OR IGNORE INTO leave_types (id, name, code, sort_order, remark, deduct_from_annual) VALUES
+    (1, '公休假',     'GXJ',  1,   '按工龄核定：工龄<10年5天，10-20年10天，20年以上15天', 0),
+    (2, '事假',       'SHIJ', 2,   '事假可抵扣公休假', 1),
+    (3, '病假',       'BINJ', 3,   '需提供医院证明', 0),
+    (4, '婚丧假',     'HSJ',  4,   '婚假25天，丧假3天（直系亲属）', 0),
+    (5, '男方陪护假', 'PHJ',  5,   '男方护理假，一般15天', 0),
+    (6, '调休',       'TXJ',  6,   '调休假', 0),
+    (7, '其他',       'QIT',  99,  '其他假别', 0),
+    (8, '产假',       'CJ',   999, '需提供医院证明', 0);
 
 -- 自增主键续接 (避免后续 INSERT 与固定 ID 冲突)
 DELETE FROM sqlite_sequence WHERE name='leave_types';

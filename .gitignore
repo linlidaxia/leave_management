@@ -3,6 +3,7 @@ node_modules/
 publish/node_modules/
 publish/data.db
 publish/cookies.txt
+publish/leave-management.jar
 webapp/target/
 webapp/data.db
 webapp/leave-management.jar

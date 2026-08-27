@@ -1,5 +1,6 @@
 // 首页概览
 (function() {
+    var tm = window.parent && window.parent !== window ? window.parent.TabManager : TabManager;
     Auth.requireAuth().then(function(user) {
         if (!user) return;
         return Api.get('/api/dashboard');
@@ -12,23 +13,23 @@
                 '<div><div class="page-title">首页概览</div><div class="page-subtitle">Dashboard · 系统总览</div></div>' +
             '</div>' +
             '<div class="stats-grid">' +
-                '<a class="stat-card stat-link" href="javascript:void(0)" onclick="TabManager.open(\'部门管理\',\'/pages/departments.html\',\'departments\')">' +
+                '<a class="stat-card stat-link" href="javascript:void(0)" onclick="window.parent.TabManager.open(\'departments\',\'部门管理\',\'/departments.html\')">' +
                     '<div class="stat-num" style="color:var(--ink)">' + s.deptCount + '</div>' +
                     '<div class="stat-label">部门总数</div>' +
                 '</a>' +
-                '<a class="stat-card stat-link" href="javascript:void(0)" onclick="TabManager.open(\'人员管理\',\'/pages/employees.html\',\'employees\')">' +
+                '<a class="stat-card stat-link" href="javascript:void(0)" onclick="window.parent.TabManager.open(\'employees\',\'人员管理\',\'/employees.html\')">' +
                     '<div class="stat-num" style="color:var(--success)">' + s.empCount + '</div>' +
                     '<div class="stat-label">人员总数</div>' +
                 '</a>' +
-                '<a class="stat-card stat-link" href="javascript:void(0)" onclick="TabManager.open(\'请假记录\',\'/pages/leave-list.html\',\'leave-list\')">' +
+                '<a class="stat-card stat-link" href="javascript:void(0)" onclick="window.parent.TabManager.open(\'leave-list\',\'请假记录\',\'/leave-list.html?year=' + year + '\')">' +
                     '<div class="stat-num" style="color:var(--warning)">' + s.appCount + '</div>' +
                     '<div class="stat-label">本年请假</div>' +
                 '</a>' +
-                '<a class="stat-card stat-link" href="javascript:void(0)" onclick="TabManager.open(\'请假记录\',\'/pages/leave-list.html\',\'leave-list\')">' +
+                '<a class="stat-card stat-link" href="javascript:void(0)" onclick="window.parent.TabManager.open(\'leave-list\',\'请假记录\',\'/leave-list.html?year=' + year + '&status=%E5%BE%85%E5%AE%A1%E6%89%B9\')">' +
                     '<div class="stat-num" style="color:var(--danger)">' + s.pendingCount + '</div>' +
                     '<div class="stat-label">待审批</div>' +
                 '</a>' +
-                '<a class="stat-card stat-link" href="javascript:void(0)" onclick="TabManager.open(\'销假管理\',\'/pages/cancel.html\',\'cancel\')">' +
+                '<a class="stat-card stat-link" href="javascript:void(0)" onclick="window.parent.TabManager.open(\'cancel\',\'销假管理\',\'/cancel.html?year=' + year + '\')">' +
                     '<div class="stat-num" style="color:var(--info)">' + s.cancelPending + '</div>' +
                     '<div class="stat-label">待销假</div>' +
                 '</a>' +

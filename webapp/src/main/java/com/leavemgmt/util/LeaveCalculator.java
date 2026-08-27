@@ -74,7 +74,9 @@ public final class LeaveCalculator {
 
     /**
      * 判断假别名称是否属于"事假" (用于自动抵扣公休假).
+     * @deprecated 请使用 LeaveType.getDeductFromAnnual() 替代
      */
+    @Deprecated
     public static boolean isPersonalLeave(String leaveTypeName) {
         return leaveTypeName != null && leaveTypeName.contains("事假");
     }
@@ -83,6 +85,25 @@ public final class LeaveCalculator {
      * 判断假别名称是否属于"公休假" (用于额度校验).
      */
     public static boolean isAnnualLeave(String leaveTypeName) {
-        return leaveTypeName != null && leaveTypeName.contains("公休假");
+        return leaveTypeName != null && (leaveTypeName.contains("公休假") || leaveTypeName.contains("年休假"));
+    }
+
+    /**
+     * 判断假别是否需要优先扣除公休假.
+     * 基于 LeaveType.deductFromAnnual 字段判断.
+     */
+    public static boolean isDeductFromAnnual(com.leavemgmt.model.LeaveType leaveType) {
+        return leaveType != null && Boolean.TRUE.equals(leaveType.getDeductFromAnnual());
+    }
+
+    /**
+     * 计算实际从公休假扣除的天数.
+     * @param totalDays 请假总天数
+     * @param annualRemaining 公休假剩余额度
+     * @return 实际扣除天数 (不超过剩余额度)
+     */
+    public static double calculateAnnualDeduction(double totalDays, double annualRemaining) {
+        if (annualRemaining <= 0) return 0;
+        return Math.min(totalDays, annualRemaining);
     }
 }

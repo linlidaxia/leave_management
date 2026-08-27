@@ -25,6 +25,8 @@ public class LeaveTypeRepository {
         lt.setSortOrder(rs.wasNull() ? null : so);
         int na = rs.getInt("need_attachment");
         lt.setNeedAttachment(!rs.wasNull() && na == 1);
+        int da = rs.getInt("deduct_from_annual");
+        lt.setDeductFromAnnual(!rs.wasNull() && da == 1);
         lt.setRemark(rs.getString("remark"));
         return lt;
     };
@@ -35,20 +37,20 @@ public class LeaveTypeRepository {
 
     public List<LeaveType> findAll() {
         return jdbc.query(
-                "SELECT id, name, code, sort_order, need_attachment, remark FROM leave_types ORDER BY sort_order, id",
+                "SELECT id, name, code, sort_order, need_attachment, deduct_from_annual, remark FROM leave_types ORDER BY sort_order, id",
                 MAPPER);
     }
 
     public LeaveType findById(Long id) {
         List<LeaveType> list = jdbc.query(
-                "SELECT id, name, code, sort_order, need_attachment, remark FROM leave_types WHERE id=?",
+                "SELECT id, name, code, sort_order, need_attachment, deduct_from_annual, remark FROM leave_types WHERE id=?",
                 MAPPER, id);
         return list.isEmpty() ? null : list.get(0);
     }
 
     public LeaveType findByName(String name) {
         List<LeaveType> list = jdbc.query(
-                "SELECT id, name, code, sort_order, need_attachment, remark FROM leave_types WHERE name=?",
+                "SELECT id, name, code, sort_order, need_attachment, deduct_from_annual, remark FROM leave_types WHERE name=?",
                 MAPPER, name);
         return list.isEmpty() ? null : list.get(0);
     }
@@ -64,13 +66,14 @@ public class LeaveTypeRepository {
         KeyHolder kh = new GeneratedKeyHolder();
         jdbc.update(conn -> {
             PreparedStatement ps = conn.prepareStatement(
-                    "INSERT INTO leave_types (name, code, sort_order, need_attachment, remark) VALUES (?, ?, ?, ?, ?)",
+                    "INSERT INTO leave_types (name, code, sort_order, need_attachment, deduct_from_annual, remark) VALUES (?, ?, ?, ?, ?, ?)",
                     Statement.RETURN_GENERATED_KEYS);
             ps.setString(1, lt.getName());
             ps.setString(2, lt.getCode());
             ps.setObject(3, lt.getSortOrder() == null ? 0 : lt.getSortOrder());
             ps.setInt(4, (lt.getNeedAttachment() != null && lt.getNeedAttachment()) ? 1 : 0);
-            ps.setString(5, lt.getRemark());
+            ps.setInt(5, (lt.getDeductFromAnnual() != null && lt.getDeductFromAnnual()) ? 1 : 0);
+            ps.setString(6, lt.getRemark());
             return ps;
         }, kh);
         Number key = kh.getKey();
@@ -79,10 +82,11 @@ public class LeaveTypeRepository {
 
     public int update(LeaveType lt) {
         return jdbc.update(
-                "UPDATE leave_types SET name=?, code=?, sort_order=?, need_attachment=?, remark=? WHERE id=?",
+                "UPDATE leave_types SET name=?, code=?, sort_order=?, need_attachment=?, deduct_from_annual=?, remark=? WHERE id=?",
                 lt.getName(), lt.getCode(),
                 lt.getSortOrder() == null ? 0 : lt.getSortOrder(),
                 (lt.getNeedAttachment() != null && lt.getNeedAttachment()) ? 1 : 0,
+                (lt.getDeductFromAnnual() != null && lt.getDeductFromAnnual()) ? 1 : 0,
                 lt.getRemark(), lt.getId());
     }
 
