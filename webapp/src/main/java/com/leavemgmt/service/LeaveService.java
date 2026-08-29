@@ -399,31 +399,80 @@ public class LeaveService {
 
         Long id = appRepo.insert(a);
 
-        // 扣减公休假余额:
-        if (lt != null && LeaveCalculator.isAnnualLeave(lt.getName())) {
-            // 公休假: 直接扣减本次天数
-            balRepo.addUsed(empId, year, days);
-        } else if (offsetAnnual > 0) {
-            // 优先扣除公休的假别: 抵扣 offsetAnnual 天
-            balRepo.addUsed(empId, year, offsetAnnual);
-        }
+        // 注意: 公休假额度扣减推迟到审批通过时执行 (见 approveApplication),
+        // 避免待审批记录长期占用可用额度.
         return id;
     }
 
     /**
-     * 编辑请假申请: 删除旧的 (恢复抵扣) 再新增
+     * 审批通过时扣减公休假额度, 返回实际从公休假扣除的天数.
+     * - 公休假: 直接扣减本次天数 (需校验额度)
+     * - 优先扣除公休的假别 (事假等): 从公休假剩余额度中抵扣, 不超过剩余额度
+     */
+    private double deductAnnualOnApproved(Long appId, Long empId, Long leaveTypeId,
+                                           double days, int year) {
+        LeaveType lt = ltRepo.findById(leaveTypeId);
+        if (lt == null || days <= 0) return 0;
+        if (LeaveCalculator.isAnnualLeave(lt.getName())) {
+            double remaining = balRepo.getRemaining(empId, year);
+            if (days > remaining) {
+                throw new IllegalStateException(
+                    String.format("公休假额度不足: 本次申请 %.1f 天, 剩余额度仅 %.1f 天", days, remaining));
+            }
+            balRepo.addUsed(empId, year, days);
+            return days;
+        }
+        if (LeaveCalculator.isDeductFromAnnual(lt)) {
+            double remaining = balRepo.getRemaining(empId, year);
+            double offset = LeaveCalculator.calculateAnnualDeduction(days, remaining);
+            if (offset > 0) balRepo.addUsed(empId, year, offset);
+            return offset;
+        }
+        return 0;
+    }
+
+    /**
+     * 编辑请假申请: 删除旧的 (恢复抵扣) 再新增, 并恢复原审批/销假状态.
+     * 这样编辑已审批/已销假记录不会丢失状态与销假记录, 也不会重复扣减额度.
      */
     @Transactional
     public Long updateApplication(Long appId, Long empId, Long leaveTypeId,
                                   LocalDate start, String startPeriod,
                                   LocalDate end, String endPeriod,
                                   String reason) {
+        LeaveApplication old = appRepo.findById(appId);
+        if (old == null) return null;
+        String oldStatus = old.getStatus();
+        LeaveCancellation oldCancel = cancelRepo.findByApplicationId(appId);
         deleteApplication(appId);
-        return submitApplication(empId, leaveTypeId, start, startPeriod, end, endPeriod, reason);
+        Long newId = submitApplication(empId, leaveTypeId, start, startPeriod, end, endPeriod, reason);
+        // 恢复原状态
+        if ("已审批".equals(oldStatus)) {
+            approveApplication(newId, old.getApprover());
+        } else if ("已销假".equals(oldStatus)) {
+            approveApplication(newId, old.getApprover());
+            LocalDate cd = oldCancel != null && oldCancel.getCancelDate() != null
+                    ? oldCancel.getCancelDate() : (old.getEndDate() != null ? old.getEndDate() : LocalDate.now());
+            double ad = oldCancel != null && oldCancel.getActualDays() != null
+                    ? oldCancel.getActualDays() : (old.getDays() != null ? old.getDays() : 0);
+            String rm = oldCancel != null ? oldCancel.getRemark() : "编辑恢复";
+            cancelRepo.insert(newId, cd, ad, rm);
+            appRepo.updateStatus(newId, "已销假", null);
+        }
+        return newId;
     }
 
     @Transactional
     public void approveApplication(Long appId, String approver) {
+        LeaveApplication a = appRepo.findById(appId);
+        if (a == null) throw new IllegalStateException("请假记录不存在");
+        if (!"待审批".equals(a.getStatus())) {
+            throw new IllegalStateException("仅待审批状态的记录可以审批");
+        }
+        int year = a.getStartDate().getYear();
+        double offset = deductAnnualOnApproved(appId, a.getEmployeeId(), a.getLeaveTypeId(),
+                a.getDays() == null ? 0 : a.getDays(), year);
+        if (offset != 0) appRepo.updateOffsetAnnual(appId, offset);
         appRepo.updateStatus(appId, "已审批", approver);
     }
 
@@ -436,6 +485,10 @@ public class LeaveService {
                 failedIds.add(String.valueOf(id));
                 continue;
             }
+            int year = a.getStartDate().getYear();
+            double offset = deductAnnualOnApproved(id, a.getEmployeeId(), a.getLeaveTypeId(),
+                    a.getDays() == null ? 0 : a.getDays(), year);
+            if (offset != 0) appRepo.updateOffsetAnnual(id, offset);
             appRepo.updateStatus(id, "已审批", approver);
         }
         if (!failedIds.isEmpty()) {
@@ -474,8 +527,10 @@ public class LeaveService {
     }
 
     /**
-     * 插入历史请假记录 (导入用, 不扣减年假额度)
-     * 已销假记录同时写入 leave_cancellations 表
+     * 插入历史请假记录 (导入用).
+     * 已审批 / 已销假记录会扣减公休假额度 (并写入 offset_annual), 保证年假余额准确.
+     * 待审批记录不扣减, 待后续审批时再扣.
+     * 已销假记录同时写入 leave_cancellations 表.
      */
     @Transactional
     public Long insertHistoricalApplication(LeaveApplication a, LocalDate approveDate) {
@@ -485,6 +540,10 @@ public class LeaveService {
             if (approveDate != null) {
                 appRepo.updateApproveDate(id, approveDate);
             }
+            int year = a.getStartDate().getYear();
+            double offset = deductAnnualOnApproved(id, a.getEmployeeId(), a.getLeaveTypeId(),
+                    a.getDays() == null ? 0 : a.getDays(), year);
+            if (offset != 0) appRepo.updateOffsetAnnual(id, offset);
         }
         // 已销假: 同时创建销假记录, 以便在销假管理页面显示
         if ("已销假".equals(a.getStatus())) {

@@ -149,6 +149,12 @@ public class LeaveApplicationRepository {
                 status, approver, SqliteDateUtil.toText(LocalDate.now()), id);
     }
 
+    public int updateOffsetAnnual(Long id, double offsetAnnual) {
+        return jdbc.update(
+                "UPDATE leave_applications SET offset_annual=? WHERE id=?",
+                offsetAnnual, id);
+    }
+
     public int updateApproveDate(Long id, LocalDate approveDate) {
         return jdbc.update(
                 "UPDATE leave_applications SET approve_date=? WHERE id=?",

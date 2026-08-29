@@ -72,4 +72,19 @@ public class LeaveCancellationRepository {
     public int deleteByApplicationId(Long applicationId) {
         return jdbc.update("DELETE FROM leave_cancellations WHERE application_id=?", applicationId);
     }
+
+    public LeaveCancellation findByApplicationId(Long applicationId) {
+        List<LeaveCancellation> list = jdbc.query(
+                "SELECT lc.id, lc.application_id, e.name AS emp_name, d.name AS dept_name, " +
+                "lt.name AS lt_name, la.start_date, la.end_date, la.days, " +
+                "lc.cancel_date, lc.actual_days, lc.remark " +
+                "FROM leave_cancellations lc " +
+                "INNER JOIN leave_applications la ON lc.application_id = la.id " +
+                "INNER JOIN employees e ON la.employee_id = e.id " +
+                "INNER JOIN leave_types lt ON la.leave_type_id = lt.id " +
+                "LEFT JOIN departments d ON e.department_id = d.id " +
+                "WHERE lc.application_id=?",
+                MAPPER, applicationId);
+        return list.isEmpty() ? null : list.get(0);
+    }
 }
