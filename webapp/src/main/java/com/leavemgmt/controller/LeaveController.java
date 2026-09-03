@@ -406,9 +406,10 @@ public class LeaveController {
             @RequestParam(required = false) Long identityId,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) Boolean annualRelated,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size) {
-        List<LeaveApplication> all = service.listApplications(year, deptId, employeeId, leaveTypeId, status, identityId, startDate, endDate);
+        List<LeaveApplication> all = service.listApplications(year, deptId, employeeId, leaveTypeId, status, identityId, startDate, endDate, annualRelated);
         if (page != null && size != null && size > 0) {
             int total = all.size();
             int fromIndex = Math.min(page * size, total);
@@ -562,9 +563,16 @@ public class LeaveController {
 
     @GetMapping("/cancellations")
     public Object listCancellations(
+            @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size) {
         java.util.List<LeaveCancellation> all = service.listCancellations();
+        if (year != null) {
+            final int y = year;
+            all = all.stream()
+                    .filter(c -> c.getStartDate() != null && c.getStartDate().getYear() == y)
+                    .collect(java.util.stream.Collectors.toList());
+        }
         if (page != null && size != null && size > 0) {
             int total = all.size();
             int fromIndex = Math.min(page * size, total);

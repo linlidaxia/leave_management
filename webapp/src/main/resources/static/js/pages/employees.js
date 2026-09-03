@@ -51,7 +51,7 @@
                     e.id, e.name, e.gender||'—', e.idCard||'—', e.departmentName||'—', e.identityName||'—', e.position||'—',
                     UI.fmtDate(e.workStartDate), e.workYears,
                     UI.fmtNum(e.annualTotalActual, 1),
-                    '<span style="' + (e.annualUsed > 0 ? 'color:var(--warning);font-weight:600;' : '') + '">' + UI.fmtNum(e.annualUsed, 1) + '</span>',
+                    (e.annualUsed > 0 ? '<a href="#" title="查看该人员年假相关请假记录" onclick="openAnnualRelated(' + e.id + ',' + e.departmentId + ');return false;" style="color:var(--warning);font-weight:600;text-decoration:underline;">' + UI.fmtNum(e.annualUsed, 1) + '</a>' : '<span>' + UI.fmtNum(e.annualUsed, 1) + '</span>'),
                     '<span style="' + remainingStyle + '">' + UI.fmtNum(e.annualRemaining, 1) + '</span>',
                     e.phone||'—', e
                 ]);
@@ -93,6 +93,10 @@
     window.load = load;
 
     window.empChangePage = function(p) { currentPage = p; load(); };
+
+    window.openAnnualRelated = function(empId, deptId) {
+        window.parent.TabManager.open('leave-list', '请假记录', '/leave-list.html?deptId=' + deptId + '&empId=' + empId + '&annualRelated=1');
+    };
 
     window.empEdit = function(id) {
         var initData = { name: '', gender: '男', idCard: '', departmentId: null, identityId: null, position: '', workStartDate: '', phone: '', remark: '' };

@@ -7,6 +7,7 @@
     var identities = [];
     var pageSize = 15;
     var currentPage = 0;
+    var presetAnnualRelated = '';   // 年假相关筛选 (来自人员管理"已请"链接)
 
     Auth.requireAuth().then(function(user) {
         if (!user) return;
@@ -28,7 +29,9 @@
         var initStatus = urlParams.get('status') || '';
         var initDeptId = urlParams.get('deptId') || '';
         var initYear = urlParams.get('year') || '';
-        return load(initStatus, initDeptId, initYear);
+        var initEmpId = urlParams.get('empId') || '';
+        presetAnnualRelated = urlParams.get('annualRelated') || '';
+        return load(initStatus, initDeptId, initYear, initEmpId);
     }).catch(function(e) { console.error(e); });
 
     function buildDeptOpts() {
@@ -62,7 +65,7 @@
         return '<option value="">全部</option><option value="待审批">待审批</option><option value="已审批">已审批</option><option value="已销假">已销假</option>';
     }
 
-    function load(initStatus, initDeptId, initYear) {
+    function load(initStatus, initDeptId, initYear, initEmpId) {
         var year = document.getElementById('ll_year') ? document.getElementById('ll_year').value : '';
         var deptId = document.getElementById('ll_dept') ? document.getElementById('ll_dept').value : '';
         var empId = document.getElementById('ll_emp') ? document.getElementById('ll_emp').value : '';
@@ -75,6 +78,7 @@
         if (initStatus && !status) status = initStatus;
         if (initDeptId && !deptId) deptId = initDeptId;
         if (initYear && !year) year = initYear;
+        if (initEmpId && !empId) empId = initEmpId;
 
         var params = [];
         if (year) params.push('year=' + year);
@@ -85,6 +89,7 @@
         if (status) params.push('status=' + encodeURIComponent(status));
         if (sd) params.push('startDate=' + sd);
         if (ed) params.push('endDate=' + ed);
+        if (presetAnnualRelated) params.push('annualRelated=' + presetAnnualRelated);
         params.push('page=' + currentPage);
         params.push('size=' + pageSize);
         var url = '/api/applications' + (params.length ? '?' + params.join('&') : '');
@@ -118,7 +123,8 @@
                 '<div class="page-header">' +
                     '<div><div class="page-title">请假记录</div><div class="page-subtitle">Leave Application Records</div></div>' +
                 '</div>' +
-                '<div class="page-tip">提示: 支持按年度/部门/人员/假别/状态/日期范围查询，可导出 Excel；附件管理点击附件数量</div>';
+                '<div class="page-tip">提示: 支持按年度/部门/人员/假别/状态/日期范围查询，可导出 Excel；附件管理点击附件数量' +
+                (presetAnnualRelated ? '　<span style="color:var(--warning);font-weight:600;">[已按年假相关筛选: 公休假 + 已抵扣年假的事假]</span>' : '') + '</div>';
 
             // 查询条件区
             html += '<div class="card" style="padding:8px 12px;">';
@@ -231,6 +237,7 @@
         if (status) params.push('status=' + encodeURIComponent(status));
         if (sd) params.push('startDate=' + sd);
         if (ed) params.push('endDate=' + ed);
+        if (presetAnnualRelated) params.push('annualRelated=' + presetAnnualRelated);
         var url = '/api/applications/excel' + (params.length ? '?' + params.join('&') : '');
         UI.downloadExcel(url);
     };

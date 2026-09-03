@@ -265,7 +265,13 @@ public class LeaveService {
 
     public List<LeaveApplication> listApplications(Integer year, Long deptId, Long employeeId,
             Long leaveTypeId, String status, Long identityId, String startDate, String endDate) {
-        return appRepo.findAll(year, deptId, employeeId, leaveTypeId, status, identityId, startDate, endDate);
+        return appRepo.findAll(year, deptId, employeeId, leaveTypeId, status, identityId, startDate, endDate, null);
+    }
+
+    public List<LeaveApplication> listApplications(Integer year, Long deptId, Long employeeId,
+            Long leaveTypeId, String status, Long identityId, String startDate, String endDate,
+            Boolean annualRelated) {
+        return appRepo.findAll(year, deptId, employeeId, leaveTypeId, status, identityId, startDate, endDate, annualRelated);
     }
 
     public LeaveApplication getApplication(Long id) {

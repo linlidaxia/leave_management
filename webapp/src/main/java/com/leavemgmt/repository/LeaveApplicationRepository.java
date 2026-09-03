@@ -60,6 +60,12 @@ public class LeaveApplicationRepository {
 
     public List<LeaveApplication> findAll(Integer year, Long deptId, Long employeeId,
             Long leaveTypeId, String status, Long identityId, String startDate, String endDate) {
+        return findAll(year, deptId, employeeId, leaveTypeId, status, identityId, startDate, endDate, null);
+    }
+
+    public List<LeaveApplication> findAll(Integer year, Long deptId, Long employeeId,
+            Long leaveTypeId, String status, Long identityId, String startDate, String endDate,
+            Boolean annualRelated) {
         StringBuilder sql = new StringBuilder(
                 "SELECT " + SELECT_COLS +
                 "FROM leave_applications la " +
@@ -87,6 +93,11 @@ public class LeaveApplicationRepository {
         if (identityId != null) {
             sql.append(" AND e.identity_id=?");
             params.add(identityId);
+        }
+        if (annualRelated != null && annualRelated) {
+            // 仅统计与年假相关的请假: 公休假, 以及抵扣了年假的事假
+            sql.append(" AND ((lt.deduct_from_annual = 1 AND la.offset_annual > 0) " +
+                    "OR lt.name LIKE '%公休假%' OR lt.name LIKE '%年休假%')");
         }
         if (status != null && !status.isBlank()) {
             sql.append(" AND la.status=?");

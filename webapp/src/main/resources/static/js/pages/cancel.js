@@ -57,6 +57,8 @@
 
     var pageSize = 15;
     var currentPage = 0;
+    var cancelPageSize = 15;
+    var cancelCurrentPage = 0;
 
     function load(initDeptId, initYear) {
         var cYear = document.getElementById('c_year') ? document.getElementById('c_year').value : '';
@@ -82,21 +84,20 @@
         params.push('size=' + pageSize);
         var url = '/api/cancellations/pending?' + params.join('&');
 
+        var cancelParams = [];
+        if (cYear) cancelParams.push('year=' + cYear);
+        cancelParams.push('page=' + cancelCurrentPage);
+        cancelParams.push('size=' + cancelPageSize);
+        var cancelUrl = '/api/cancellations?' + cancelParams.join('&');
+
         return Promise.all([
             Api.get(url),
-            Api.get('/api/cancellations')
+            Api.get(cancelUrl)
         ]).then(function(results) {
             var pageInfo = UI.parsePageData(results[0]);
             var pending = pageInfo.rows;
             var cancelledInfo = UI.parsePageData(results[1]);
-            var cancelledAll = cancelledInfo.rows;
-
-            // 已销假按年度筛选
-            var cancelled = [];
-            for (var j = 0; j < cancelledAll.length; j++) {
-                if (cYear && cancelledAll[j].startDate && cancelledAll[j].startDate.indexOf(String(cYear)) !== 0) continue;
-                cancelled.push(cancelledAll[j]);
-            }
+            var cancelled = cancelledInfo.rows;
 
             var html = '<div class="page-header"><div><div class="page-title">销假管理</div><div class="page-subtitle">Leave Cancellation</div></div></div>';
             html += '<div class="page-tip">提示: 点击待销假记录的「销假」按钮进行销假登记</div>';
@@ -113,7 +114,7 @@
             html += '<div class="form-group" style="width:130px;flex-shrink:0;"><label>结束日期</label><input type="date" id="c_ed" value="' + (ed||'') + '"></div>';
             html += '</div>';
             html += '<div style="display:flex;gap:6px;margin-top:6px;">';
-            html += '<button class="btn btn-primary" onclick="load()">查询</button>';
+            html += '<button class="btn btn-primary" onclick="cancelSearch()">查询</button>';
             html += '<button class="btn btn-secondary" onclick="cancelReset()">重置</button>';
             html += '</div>';
             html += '</div>';
@@ -135,18 +136,22 @@
             html += '</div></div>';
 
             // 已销假列表
-            html += '<div class="card"><h3>已销假记录 (' + cancelled.length + ')</h3>';
+            html += '<div class="card"><h3>已销假记录 (共 ' + cancelledInfo.total + ' 条)</h3>';
             var cRows = [];
             for (var j = 0; j < cancelled.length; j++) {
                 var c = cancelled[j];
                 cRows.push([c.id, c.employeeName, c.departmentName||'—', c.leaveTypeName, UI.fmtDate(c.startDate), UI.fmtDate(c.endDate), UI.fmtNum(c.leaveDays,1), UI.fmtDate(c.cancelDate), UI.fmtNum(c.actualDays,1)]);
             }
+            html += '<div id="cancel_done_wrap">';
             html += UI.table(['ID', '姓名', '部门', '假别', '开始', '结束', '原天数', '销假日期', '实际天数'], cRows);
+            html += '</div>';
             html += '</div>';
 
             document.getElementById('contentArea').innerHTML = html;
             var tw = document.querySelector('#cancel_pending_wrap .table-wrap');
             if (tw) tw.insertAdjacentHTML('afterend', UI.pagination(pageInfo.total, currentPage, pageSize, 'cancelChangePage'));
+            var ctw = document.querySelector('#cancel_done_wrap .table-wrap');
+            if (ctw) ctw.insertAdjacentHTML('afterend', UI.pagination(cancelledInfo.total, cancelCurrentPage, cancelPageSize, 'cancelCancelledChangePage'));
             // 恢复筛选条件
             var sdYear = document.getElementById('c_year');
             if (sdYear) sdYear.value = cYear;
@@ -169,6 +174,10 @@
 
     window.cancelChangePage = function(p) { currentPage = p; load(); };
 
+    window.cancelCancelledChangePage = function(p) { cancelCurrentPage = p; load(); };
+
+    window.cancelSearch = function() { currentPage = 0; cancelCurrentPage = 0; load(); };
+
     window.onCancelDeptChange = function() {
         var deptId = document.getElementById('c_dept').value;
         var empSel = document.getElementById('c_emp');
@@ -176,6 +185,8 @@
     };
 
     window.cancelReset = function() {
+        currentPage = 0;
+        cancelCurrentPage = 0;
         document.getElementById('c_year').value = new Date().getFullYear();
         document.getElementById('c_dept').value = '';
         document.getElementById('c_emp').value = '';
