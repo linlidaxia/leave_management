@@ -21,18 +21,16 @@ public final class LeaveCalculator {
     private LeaveCalculator() {}
 
     /**
-     * 计算工龄 (满年). 与原版一致:
-     * 若当前月日早于参加工作月日, 则少算 1 年.
+     * 计算工龄. 按自然年度计算:
+     * 参工当年即计 1 年, 之后每过一个自然年加 1 年.
+     * 即 参工年份到引用年份之间跨越的工作年度数 = 引用年份 - 参工年份 + 1.
+     * 例如 2015 年参工: 2015 年计 1 年, 2015~2026 年计 12 年.
      */
     public static int calculateWorkYears(LocalDate workStart, LocalDate refDate) {
         if (workStart == null) return 0;
         if (refDate == null) refDate = LocalDate.now();
-        long years = ChronoUnit.YEARS.between(workStart, refDate);
-        // Adjust for not-yet-reached anniversary this year
-        if (refDate.getDayOfYear() < workStart.getDayOfYear()) {
-            years--;
-        }
-        return (int) Math.max(years, 0);
+        int years = refDate.getYear() - workStart.getYear() + 1;
+        return Math.max(years, 0);
     }
 
     public static int calculateWorkYears(LocalDate workStart) {

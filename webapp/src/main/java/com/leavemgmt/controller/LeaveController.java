@@ -478,10 +478,18 @@ public class LeaveController {
     @PreAuthorize("hasAnyRole('ADMIN','USER')")
     public Map<String, Object> approve(@PathVariable Long id,
                                         @AuthenticationPrincipal(expression = "username") String approver) {
-        service.approveApplication(id, approver);
-        Map<String, Object> m = new HashMap<>();
-        m.put("success", true);
-        return m;
+        try {
+            service.approveApplication(id, approver);
+            Map<String, Object> m = new HashMap<>();
+            m.put("success", true);
+            m.put("message", "审批通过");
+            return m;
+        } catch (IllegalStateException e) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("success", false);
+            m.put("message", e.getMessage());
+            return m;
+        }
     }
 
     @PostMapping("/applications/batch-approve")

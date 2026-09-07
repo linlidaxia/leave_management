@@ -616,14 +616,19 @@ public class LeaveService {
     public int initAnnualBalance(int year) {
         balRepo.deleteByYear(year);
         List<Employee> emps = empRepo.findWorkInfoAll();
+        LocalDate refDate = LocalDate.of(year, 12, 31);
         for (Employee e : emps) {
-            int wy = LeaveCalculator.calculateWorkYears(e.getWorkStartDate());
+            int wy = LeaveCalculator.calculateWorkYears(e.getWorkStartDate(), refDate);
             double total = LeaveCalculator.getAnnualLeaveDays(wy);
             balRepo.insert(e.getId(), year, wy, total);
         }
-        // 重放本年度已存在的请假记录
+        // 重放本年度已存在的请假记录 (仅统计已审批/已销假状态, 不计未审批的待审批记录,
+        // 因为未审批记录尚未真正消耗公休假额度)
         List<LeaveApplication> apps = appRepo.findAll(year, null, null);
         for (LeaveApplication a : apps) {
+            if (a == null || (!"已审批".equals(a.getStatus()) && !"已销假".equals(a.getStatus()))) {
+                continue;
+            }
             LeaveType lt = ltRepo.findById(a.getLeaveTypeId());
             if (lt == null) continue;
             // 公休假: 扣减本次天数

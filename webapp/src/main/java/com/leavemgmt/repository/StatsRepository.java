@@ -61,7 +61,8 @@ public class StatsRepository {
                 "INNER JOIN employees e ON la.employee_id = e.id " +
                 "INNER JOIN leave_types lt ON la.leave_type_id = lt.id " +
                 "LEFT JOIN departments d ON e.department_id = d.id " +
-                "WHERE CAST(strftime('%Y', la.start_date) AS INTEGER)=?");
+                "WHERE CAST(strftime('%Y', la.start_date) AS INTEGER)=? " +
+                "AND la.status IN ('已审批','已销假')");
         List<Object> params = new ArrayList<>();
         params.add(year);
         if (deptId != null) {
@@ -135,7 +136,8 @@ public class StatsRepository {
                 "INNER JOIN employees e ON la.employee_id = e.id " +
                 "INNER JOIN leave_types lt ON la.leave_type_id = lt.id " +
                 "LEFT JOIN departments d ON e.department_id = d.id " +
-                "WHERE CAST(strftime('%Y', la.start_date) AS INTEGER)=?");
+                "WHERE CAST(strftime('%Y', la.start_date) AS INTEGER)=? " +
+                "AND la.status IN ('已审批','已销假')");
         List<Object> params = new ArrayList<>();
         params.add(year);
         if (deptId != null) {
