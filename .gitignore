@@ -7,5 +7,6 @@ publish/leave-management.jar
 webapp/target/
 webapp/data.db
 webapp/leave-management.jar
+data.db
 temp/
 *.class
